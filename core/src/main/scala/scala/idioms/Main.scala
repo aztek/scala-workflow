@@ -1,6 +1,4 @@
-package com.github.aztek.idioms
-
-import Idiom._
+package scala.idioms
 
 object Main extends App {
   val foo: Option[Int] = Some(40)

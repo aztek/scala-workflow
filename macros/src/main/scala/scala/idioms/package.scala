@@ -1,9 +1,9 @@
-package com.github.aztek.idioms
+package scala
 
 import language.experimental.macros
 import reflect.macros.Context
 
-object Idiom {
+package object idioms {
   def $ (code: _): _ = macro optionIdiomImpl
 
   def optionIdiomImpl(c: Context)(code: c.Tree): c.Tree = {
