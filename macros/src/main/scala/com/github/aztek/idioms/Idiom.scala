@@ -28,7 +28,7 @@ object Idiom {
     }
 
     def composeLiftableLambda(code: Tree) = {
-      val (body, binds) = extractFunctionBody(code)
+      val (body, binds) = extractLambdaBody(code)
       val lambda = binds.foldLeft(body) {
         (tree, bind) =>
           val (name, arg) = bind
@@ -40,10 +40,11 @@ object Idiom {
           val valdef = ValDef(Modifiers(), name, existential, EmptyTree)
           Function(List(valdef), tree)
       }
-      (lambda, binds map (_._2))
+      val (_, args) = binds.unzip
+      (lambda, args)
     }
 
-    def extractFunctionBody(code: Tree): (Tree, List[(TermName, Tree)]) = {
+    def extractLambdaBody(code: Tree): (Tree, List[(TermName, Tree)]) = {
       def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe <:< appType
 
       code match {
@@ -54,12 +55,12 @@ object Idiom {
         case Apply(expr, args) =>
           val (body, binds) = expr match {
             case Select(arg, method) =>
-              val (body, binds) = extractFunctionBody(arg)
+              val (body, binds) = extractLambdaBody(arg)
               (Select(body, method), binds)
             case _ =>
-              extractFunctionBody(expr)
+              extractLambdaBody(expr)
           }
-          val (newargs, newbinds) = args.map(extractFunctionBody(_)).unzip
+          val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
           (Apply(body, newargs), binds ++ newbinds.flatten)
 
         case expr =>
