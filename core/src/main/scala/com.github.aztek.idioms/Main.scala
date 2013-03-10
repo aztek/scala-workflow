@@ -3,12 +3,12 @@ package com.github.aztek.idioms
 import Idiom._
 
 object Main extends App {
-  val plus = ((_: String) + (_: String)).curried
+  val foo: Option[Int] = None
+  val bar: Option[Int] = Some(100)
 
-  val foo = Some("foo")
-  val bar = Some("bar")
-
-  val qux = ${plus(foo)(bar)}
-
+  val qux = ${foo + bar}
   println(qux)
+
+  val baz = ${foo + 5 * bar}
+  println(baz)
 }
