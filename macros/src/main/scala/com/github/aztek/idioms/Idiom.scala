@@ -44,32 +44,12 @@ object Idiom {
     }
 
     def extractFunctionBody(code: Tree): (Tree, List[(TermName, Tree)]) = {
-      def isLifted(arg: Tree) = {
-        val tpe = c.typeCheck(arg, silent = true).tpe
-        tpe.typeSymbol.isType && (tpe <:< appType)
-      }
-
-      def dissectLifted(arg: Tree) = {
-        val name = TermName(c.freshName("arg$"))
-        (Ident(name), (name -> arg))
-      }
-
-      def dissect(args: List[Tree]) =
-        args.foldLeft((List.empty[Tree], List.empty[(TermName, Tree)])) {
-          (dissects, arg) =>
-            val (args, binds) = dissects
-            if (isLifted(arg)) {
-              val (newarg, bind) = dissectLifted(arg)
-              (newarg :: args, bind :: binds)
-            } else {
-              (arg :: args, binds)
-            }
-        }
+      def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe <:< appType
 
       code match {
         case expr if isLifted(expr) =>
-          val (arg, bind) = dissectLifted(expr)
-          (arg, List(bind))
+          val name = TermName(c.freshName("arg$"))
+          (Ident(name), List(name -> expr))
 
         case Apply(expr, args) =>
           val (body, binds) = expr match {
@@ -79,8 +59,8 @@ object Idiom {
             case _ =>
               extractFunctionBody(expr)
           }
-          val (newargs, newbinds) = dissect(args)
-          (Apply(body, newargs), binds ++ newbinds)
+          val (newargs, newbinds) = args.map(extractFunctionBody(_)).unzip
+          (Apply(body, newargs), binds ++ newbinds.flatten)
 
         case expr =>
           (expr, Nil)
