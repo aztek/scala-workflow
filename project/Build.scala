@@ -8,7 +8,8 @@ object BuildSettings {
     scalacOptions ++= Seq(),
     scalaVersion := "2.11.0-SNAPSHOT",
     scalaOrganization := "org.scala-lang.macro-paradise",
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers += Resolver.sonatypeRepo("snapshots"),
+    resolvers += Resolver.sonatypeRepo("releases")
   )
 }
 
@@ -31,6 +32,8 @@ object MyBuild extends Build {
   lazy val core: Project = Project(
     "core",
     file("core"),
-    settings = buildSettings
+    settings = buildSettings ++ Seq(
+      libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
+    )
   ) dependsOn(macros)
 }
