@@ -19,21 +19,9 @@ object MyBuild extends Build {
   lazy val root: Project = Project(
     "root",
     file("core"),
-    settings = buildSettings
-  ) aggregate(macros, core)
-
-  lazy val macros: Project = Project(
-    "macros",
-    file("macros"),
     settings = buildSettings ++ Seq(
-      libraryDependencies <+= (scalaVersion)("org.scala-lang.macro-paradise" % "scala-reflect" % _))
-  )
-
-  lazy val core: Project = Project(
-    "core",
-    file("core"),
-    settings = buildSettings ++ Seq(
+      libraryDependencies <+= (scalaVersion)("org.scala-lang.macro-paradise" % "scala-reflect" % _),
       libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
     )
-  ) dependsOn(macros)
+  )
 }
