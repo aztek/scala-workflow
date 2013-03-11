@@ -29,8 +29,8 @@ package object idioms {
 
     def composeLiftableLambda(code: Tree) = {
       val (body, binds) = extractLambdaBody(code)
-      val lambda = binds.foldLeft(body) {
-        (tree, bind) =>
+      val lambda = binds.foldRight(body) {
+        (bind, tree) =>
           val (name, arg) = bind
           val tpe = c.typeCheck(arg).tpe
           val existential = tpe match {
