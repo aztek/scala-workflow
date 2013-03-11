@@ -3,7 +3,7 @@ package scala.idioms
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
-class IdiomSpec extends FlatSpec with ShouldMatchers {
+class IdiomsSpec extends FlatSpec with ShouldMatchers {
   behavior of "Idiom"
 
   val foo: Option[Int] = Some(10)
