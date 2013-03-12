@@ -9,6 +9,7 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
   val foo: Option[Int] = Some(10)
   val bar: Option[Int] = Some(3)
   val baz: Option[Int] = Some(6)
+  val xyz: Option[Int] = Some(4)
   val qux: Option[Int] = None
 
   it should "lift pure expression" in {
@@ -45,11 +46,6 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     $(minus(bar)(qux)) should equal (None)
   }
 
-  it should "lift fully liftable compound funcall" in {
-    $(foo - bar * baz) should equal (Some(-8))
-    $(foo - bar * qux) should equal (None)
-  }
-
   it should "lift partially lifted object operator application" in {
     $(foo - 2)  should equal (Some(8))
     $(qux - 2)  should equal (None)
@@ -83,9 +79,31 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
 
   it should "lift partially lifted curried function application" in {
     val minus = (a: Int) => (b: Int) => a - b
-    $(minus(foo)(2)) should equal (Some(8))
-    $(minus(qux)(2)) should equal (None)
+    $(minus(foo)(2))  should equal (Some(8))
+    $(minus(qux)(2))  should equal (None)
     $(minus(12)(foo)) should equal (Some(2))
     $(minus(12)(qux)) should equal (None)
+  }
+
+  it should "lift compound funcall with all the arguments lifted" in {
+    $(foo - (baz / bar)) should equal (Some(8))
+    $(foo - (qux / bar)) should equal (None)
+    $((foo - xyz) / bar) should equal (Some(2))
+    $((foo - qux) / bar) should equal (None)
+  }
+
+  it should "lift compound funcall with some of the arguments non-lifted" in {
+    $(foo - (baz / 2))  should equal (Some(7))
+    $(foo - (qux / 2))  should equal (None)
+    $(foo - (18 / baz)) should equal (Some(7))
+    $(foo - (18 / qux)) should equal (None)
+    $(2 * (foo - baz))  should equal (Some(8))
+    $(2 * (foo - qux))  should equal (None)
+    $((foo - baz) * 3)  should equal (Some(12))
+    $((foo - qux) * 3)  should equal (None)
+    $((foo - 4) / baz)  should equal (Some(1))
+    $((foo - 4) / qux)  should equal (None)
+    $((1 + foo) * baz)  should equal (Some(66))
+    $((1 + foo) * qux)  should equal (None)
   }
 }
