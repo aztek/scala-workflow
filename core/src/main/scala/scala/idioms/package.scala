@@ -4,15 +4,29 @@ import language.experimental.macros
 import reflect.macros.Context
 
 package object idioms {
-  def $ (code: _): _ = macro optionIdiomImpl
+  def idiom[F[_]](code: _): _ = macro idiomImpl[F]
+  def idiomImpl[F[_]](c: Context)(code: c.Tree): c.Tree = code
 
-  def optionIdiomImpl(c: Context)(code: c.Tree): c.Tree = {
+  def $ (code: _): _ = macro bracketsImpl
+  def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
+    def applicativeType: c.universe.TypeTree = {
+      for (context <- c.openMacros) {
+        import context.universe._
+        context.macroApplication match {
+          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), pack), TermName("idiom")), List(functorType)), _) =>
+            return functorType.asInstanceOf[c.universe.TypeTree]
+          case _ =>
+        }
+      }
+      c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
+    }
+
+    val applicativeTypeSymbol = applicativeType.tpe.typeSymbol
+
     import c.universe._
 
-    val appType = c.TypeTag(typeOf[Option[_]]).tpe
-
-    val appSelect  = Select(Ident(TermName("OptionApp")), TermName("app"))
-    val pureSelect = Select(Ident(TermName("OptionApp")), TermName("pure"))
+    val appSelect  = Select(Ident(TermName(applicativeTypeSymbol.name.toString + "App")), TermName("app"))
+    val pureSelect = Select(Ident(TermName(applicativeTypeSymbol.name.toString + "App")), TermName("pure"))
 
     def expandBrackets(expr: Tree): Tree = {
       def liftLambda(lambda: Tree) = Apply(pureSelect, List(lambda))
@@ -32,12 +46,11 @@ package object idioms {
       val lambda = binds.foldRight(body) {
         (bind, tree) =>
           val (name, arg) = bind
-          val tpe = c.typeCheck(arg).tpe
-          val existential = tpe match {
-            case TypeRef(_, _, arg :: _) => TypeTree(arg)
+          val skolem = c.typeCheck(arg).tpe match {
+            case TypeRef(_, _, s :: _) => TypeTree(s)
             case _ => c.abort(arg.pos, s"Unable to determine lifted type of $arg")
           }
-          val valdef = ValDef(Modifiers(), name, existential, EmptyTree)
+          val valdef = ValDef(Modifiers(), name, skolem, EmptyTree)
           Function(List(valdef), tree)
       }
       val (_, args) = binds.unzip
@@ -45,7 +58,7 @@ package object idioms {
     }
 
     def extractLambdaBody(code: Tree): (Tree, List[(TermName, Tree)]) = {
-      def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe <:< appType
+      def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses contains applicativeTypeSymbol
 
       code match {
         case expr if isLifted(expr) =>
@@ -75,6 +88,12 @@ package object idioms {
     def pure[A](a: A): Option[A] = Some(a)
     def app[A, B](optF: Option[A => B]): Option[A] => Option[B] =
       optA => for (f <- optF; a <- optA) yield f(a)
+  }
+
+  object ListApp extends Applicative[List] {
+    def pure[A](a: A): List[A] = List(a)
+    def app[A, B](fs: List[A => B]): List[A] => List[B] =
+      as => for (f <- fs; a <- as) yield f(a)
   }
 
   trait Applicative[F[_]] {
