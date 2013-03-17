@@ -4,18 +4,18 @@ import language.higherKinds
 import util.Try
 
 trait Applicative[F[_]] {
-  def pure[T](t: ⇒ T): F[T]
+  def pure[T](t: T): F[T]
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 }
 
 object Applicative {
   implicit val option = new Applicative[Option] {
-    def pure[A](a: ⇒ A) = Option(a)
+    def pure[A](a: A) = Option(a)
     def app[A, B](of: Option[A ⇒ B]) = oa ⇒ for (f ← of; a ← oa) yield f(a)
   }
 
   implicit val list = new Applicative[List] {
-    def pure[A](a: ⇒ A) = List(a)
+    def pure[A](a: A) = List(a)
     def app[A, B](fs: List[A ⇒ B]) = as ⇒ for (f ← fs; a ← as) yield f(a)
   }
 
@@ -27,12 +27,12 @@ object Applicative {
   implicit def function[T] = {
     type `T ⇒ _`[A] = T ⇒ A
     new Applicative[`T ⇒ _`] {
-      def pure[A](a: ⇒ A) = (_: T) ⇒ a
+      def pure[A](a: A) = (_: T) ⇒ a
       def app[A, B](f: T ⇒ A ⇒ B) = (g: T ⇒ A) ⇒ (t: T) ⇒ f(t)(g(t))
     }
   }
 
   def pure[F[_] : Applicative, A](a: ⇒ A) = implicitly[Applicative[F]].pure[A](a)
 
-  def app[F[_] : Applicative, A, B](f: F[A ⇒ B])(a: ⇒ F[A]) = implicitly[Applicative[F]].app(f)(a)
+  def app[F[_] : Applicative, A, B](f: F[A ⇒ B])(a: F[A]) = implicitly[Applicative[F]].app(f)(a)
 }
