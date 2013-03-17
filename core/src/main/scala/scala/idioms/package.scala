@@ -1,6 +1,7 @@
 package scala
 
 import language.experimental.macros
+import language.higherKinds
 import reflect.macros.Context
 
 package object idioms {
@@ -13,7 +14,7 @@ package object idioms {
       for (context ← c.openMacros) {
         import context.universe._
         context.macroApplication match {
-          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), pack), TermName("idiom")), List(functorType)), _) ⇒
+          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), _), TermName("idiom")), List(functorType)), _) ⇒
             return functorType.asInstanceOf[c.universe.TypeTree]
           case _ ⇒
         }
@@ -61,32 +62,29 @@ package object idioms {
       (lambda, args)
     }
 
-    def extractLambdaBody(code: Tree): (Tree, List[(TermName, Tree)]) = {
-      def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses contains applicativeTypeSymbol
+    def isLifted(arg: Tree) = {
+      val baseClasses = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses
+      baseClasses contains applicativeTypeSymbol
+    }
 
-      code match {
-        case expr if isLifted(expr) ⇒
-          val name = TermName(c.freshName("arg$"))
-          (Ident(name), List(name → expr))
+    type Binds = List[(TermName, Tree)]
 
-        case Apply(expr, args) ⇒
-          val (body, binds) = expr match {
-            case Select(arg, method) ⇒
-              val (body, binds) = extractLambdaBody(arg)
-              (Select(body, method), binds)
-            case _ ⇒
-              extractLambdaBody(expr)
-          }
-          val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
-          (Apply(body, newargs), binds ++ newbinds.flatten)
+    def extractLambdaBody(code: Tree): (Tree, Binds) = code match {
+      case expr if isLifted(expr) ⇒
+        val name = TermName(c.freshName("arg$"))
+        (Ident(name), List(name → expr))
 
-        case Select(arg, method) ⇒
-          val (newarg, binds) = extractLambdaBody(arg)
-          (Select(newarg, method), binds)
+      case Apply(expr, args) ⇒
+        val (body, binds) = extractLambdaBody(expr)
+        val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
+        (Apply(body, newargs), binds ++ newbinds.flatten)
 
-        case expr ⇒
-          (expr, Nil)
-      }
+      case Select(arg, method) ⇒
+        val (newarg, binds) = extractLambdaBody(arg)
+        (Select(newarg, method), binds)
+
+      case expr ⇒
+        (expr, Nil)
     }
 
     expandBrackets(code)
