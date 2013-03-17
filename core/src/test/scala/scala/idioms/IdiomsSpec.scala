@@ -34,13 +34,13 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     }
 
     it should "lift function application" in {
-      val minus = (a: Int, b: Int) => a - b
+      val minus = (a: Int, b: Int) ⇒ a - b
       $(minus(ten, three))  should equal (Some(7))
       $(minus(three, none)) should equal (None)
     }
 
     it should "lift curried function application" in {
-      val minus = (a: Int) => (b: Int) => a - b
+      val minus = (a: Int) ⇒ (b: Int) ⇒ a - b
       $(minus(ten)(three))  should equal (Some(7))
       $(minus(three)(none)) should equal (None)
     }
@@ -76,7 +76,7 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     }
 
     it should "lift partially lifted function application" in {
-      val minus = (a: Int, b: Int) => a - b
+      val minus = (a: Int, b: Int) ⇒ a - b
       $(minus(ten, 2))   should equal (Some(8))
       $(minus(none, 2))  should equal (None)
       $(minus(12, ten))  should equal (Some(2))
@@ -84,7 +84,7 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     }
 
     it should "lift partially lifted curried function application" in {
-      val minus = (a: Int) => (b: Int) => a - b
+      val minus = (a: Int) ⇒ (b: Int) ⇒ a - b
       $(minus(ten)(2))   should equal (Some(8))
       $(minus(none)(2))  should equal (None)
       $(minus(12)(ten))  should equal (Some(2))
