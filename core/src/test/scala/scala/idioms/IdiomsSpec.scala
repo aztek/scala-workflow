@@ -12,12 +12,10 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
   val four:  Option[Int] = Some(4)
   val none:  Option[Int] = None
 
-  idiom[Option] {
-    it should "lift pure expression" in {
-      $("foobar") should equal (Some("foobar"))
-      $(100 - 42) should equal (Some(100 - 42))
-    }
+  val foo: Option[String] = Some("foo")
+  val snone: Option[String] = None
 
+  idiom[Option] {
     it should "lift object operator application" in {
       $(ten - three)  should equal (Some(7))
       $(three - none) should equal (None)
@@ -45,6 +43,13 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
       val minus = (a: Int) => (b: Int) => a - b
       $(minus(ten)(three))  should equal (Some(7))
       $(minus(three)(none)) should equal (None)
+    }
+
+    it should "lift inner value method call" in {
+      $(foo.reverse)   should equal (Some("oof"))
+      $(snone.reverse) should equal (None)
+      $(ten.toString)  should equal (Some("10"))
+      $(none.toString) should equal (None)
     }
 
     it should "lift partially lifted object operator application" in {

@@ -80,6 +80,10 @@ package object idioms {
           val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
           (Apply(body, newargs), binds ++ newbinds.flatten)
 
+        case Select(arg, method) =>
+          val (newarg, binds) = extractLambdaBody(arg)
+          (Select(newarg, method), binds)
+
         case expr =>
           (expr, Nil)
       }
