@@ -10,7 +10,7 @@ trait Applicative[F[_]] {
 
 object Applicative {
   implicit val option = new Applicative[Option] {
-    def pure[A](a: ⇒ A) = Some(a)
+    def pure[A](a: ⇒ A) = Option(a)
     def app[A, B](optF: Option[A ⇒ B]) = optA ⇒ for (f ← optF; a ← optA) yield f(a)
   }
 
