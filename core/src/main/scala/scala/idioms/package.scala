@@ -25,15 +25,19 @@ package object idioms {
 
     import c.universe._
 
-    val appSelect  = Select(Ident(TermName(applicativeTypeSymbol.name.toString + "App")), TermName("app"))
-    val pureSelect = Select(Ident(TermName(applicativeTypeSymbol.name.toString + "App")), TermName("pure"))
+    val applicativeRef = Select(Select(Ident(TermName("scala")), TermName("idioms")), TermName("Applicative"))
+    val pure = Select(applicativeRef, TermName("pure"))
+    val app  = Select(applicativeRef, TermName("app"))
 
     def expandBrackets(expr: Tree): Tree = {
-      def liftLambda(lambda: Tree) = Apply(pureSelect, List(lambda))
+      def liftLambda(lambda: Tree) = {
+        val tpe = c.typeCheck(lambda).tpe
+        Apply(TypeApply(pure, List(Ident(applicativeTypeSymbol), TypeTree(tpe))), List(lambda))
+      }
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
         args.foldLeft(liftedLambda) {
-          (tree, arg) => Apply(Apply(appSelect, List(tree)), List(arg))
+          (tree, arg) => Apply(Apply(app, List(tree)), List(arg))
         }
 
       val (lambda, args) = composeLiftableLambda(expr)
@@ -82,22 +86,5 @@ package object idioms {
     }
 
     expandBrackets(code)
-  }
-
-  object OptionApp extends Applicative[Option] {
-    def pure[A](a: A): Option[A] = Some(a)
-    def app[A, B](optF: Option[A => B]): Option[A] => Option[B] =
-      optA => for (f <- optF; a <- optA) yield f(a)
-  }
-
-  object ListApp extends Applicative[List] {
-    def pure[A](a: A): List[A] = List(a)
-    def app[A, B](fs: List[A => B]): List[A] => List[B] =
-      as => for (f <- fs; a <- as) yield f(a)
-  }
-
-  trait Applicative[F[_]] {
-    def pure[T](t: T): F[T]
-    def app[A, B](f: F[A => B]): F[A] => F[B]
   }
 }
