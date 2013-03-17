@@ -11,7 +11,7 @@ trait Applicative[F[_]] {
 object Applicative {
   implicit val option = new Applicative[Option] {
     def pure[A](a: ⇒ A) = Option(a)
-    def app[A, B](optF: Option[A ⇒ B]) = optA ⇒ for (f ← optF; a ← optA) yield f(a)
+    def app[A, B](of: Option[A ⇒ B]) = oa ⇒ for (f ← of; a ← oa) yield f(a)
   }
 
   implicit val list = new Applicative[List] {
