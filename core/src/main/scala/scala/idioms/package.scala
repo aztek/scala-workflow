@@ -10,12 +10,12 @@ package object idioms {
   def $ (code: _): _ = macro bracketsImpl
   def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
     def applicativeType: c.universe.TypeTree = {
-      for (context <- c.openMacros) {
+      for (context ← c.openMacros) {
         import context.universe._
         context.macroApplication match {
-          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), pack), TermName("idiom")), List(functorType)), _) =>
+          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), pack), TermName("idiom")), List(functorType)), _) ⇒
             return functorType.asInstanceOf[c.universe.TypeTree]
-          case _ =>
+          case _ ⇒
         }
       }
       c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
@@ -37,7 +37,7 @@ package object idioms {
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
         args.foldLeft(liftedLambda) {
-          (tree, arg) => Apply(Apply(app, List(tree)), List(arg))
+          (tree, arg) ⇒ Apply(Apply(app, List(tree)), List(arg))
         }
 
       val (lambda, args) = composeLiftableLambda(expr)
@@ -48,11 +48,11 @@ package object idioms {
     def composeLiftableLambda(code: Tree) = {
       val (body, binds) = extractLambdaBody(code)
       val lambda = binds.foldRight(body) {
-        (bind, tree) =>
+        (bind, tree) ⇒
           val (name, arg) = bind
           val skolem = c.typeCheck(arg).tpe match {
-            case TypeRef(_, _, s :: _) => TypeTree(s)
-            case _ => c.abort(arg.pos, s"Unable to determine lifted type of $arg")
+            case TypeRef(_, _, s :: _) ⇒ TypeTree(s)
+            case _ ⇒ c.abort(arg.pos, s"Unable to determine lifted type of $arg")
           }
           val valdef = ValDef(Modifiers(), name, skolem, EmptyTree)
           Function(List(valdef), tree)
@@ -65,26 +65,26 @@ package object idioms {
       def isLifted(arg: Tree) = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses contains applicativeTypeSymbol
 
       code match {
-        case expr if isLifted(expr) =>
+        case expr if isLifted(expr) ⇒
           val name = TermName(c.freshName("arg$"))
-          (Ident(name), List(name -> expr))
+          (Ident(name), List(name → expr))
 
-        case Apply(expr, args) =>
+        case Apply(expr, args) ⇒
           val (body, binds) = expr match {
-            case Select(arg, method) =>
+            case Select(arg, method) ⇒
               val (body, binds) = extractLambdaBody(arg)
               (Select(body, method), binds)
-            case _ =>
+            case _ ⇒
               extractLambdaBody(expr)
           }
           val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
           (Apply(body, newargs), binds ++ newbinds.flatten)
 
-        case Select(arg, method) =>
+        case Select(arg, method) ⇒
           val (newarg, binds) = extractLambdaBody(arg)
           (Select(newarg, method), binds)
 
-        case expr =>
+        case expr ⇒
           (expr, Nil)
       }
     }
