@@ -28,7 +28,7 @@ object Applicative {
     type `Either[_, T]`[A] = Either[A, T]
     new Applicative[`Either[_, T]`] {
       def pure[A](a: ⇒ A) = Left(a)
-      def app[A, B](ef: Either[A ⇒ B, T]) = (ea: Either[A, T]) ⇒ for (f ← ef.left; a ← ea.left) yield f(a)
+      def app[A, B](ef: Either[A ⇒ B, T]) = ea ⇒ for (f ← ef.left; a ← ea.left) yield f(a)
     }
   }
 
@@ -36,7 +36,7 @@ object Applicative {
     type `Either[T, _]`[A] = Either[T, A]
     new Applicative[`Either[T, _]`] {
       def pure[A](a: ⇒ A) = Right(a)
-      def app[A, B](ef: Either[T, A ⇒ B]) = (ea: Either[T, A]) ⇒ for (f ← ef.right; a ← ea.right) yield f(a)
+      def app[A, B](ef: Either[T, A ⇒ B]) = ea ⇒ for (f ← ef.right; a ← ea.right) yield f(a)
     }
   }
 
@@ -44,7 +44,7 @@ object Applicative {
     type `T ⇒ _`[A] = T ⇒ A
     new Applicative[`T ⇒ _`] {
       def pure[A](a: ⇒ A) = (_: T) ⇒ a
-      def app[A, B](f: T ⇒ A ⇒ B) = (g: T ⇒ A) ⇒ (t: T) ⇒ f(t)(g(t))
+      def app[A, B](f: T ⇒ A ⇒ B) = g ⇒ t ⇒ f(t)(g(t))
     }
   }
 
