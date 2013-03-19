@@ -5,8 +5,8 @@ import language.higherKinds
 import reflect.macros.Context
 
 package object idioms {
-  def idiom[F[_]](code: _): _ = macro idiomImpl[F]
-  def idiomImpl[F[_]](c: Context)(code: c.Tree): c.Tree = code
+  def idiom[F[_]](code: _): _ = macro idiomImpl
+  def idiomImpl(c: Context)(code: c.Tree): c.Tree = code
 
   def $ (code: _): _ = macro bracketsImpl
   def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
