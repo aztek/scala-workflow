@@ -47,8 +47,4 @@ object Applicative {
       def app[A, B](f: T ⇒ A ⇒ B) = g ⇒ t ⇒ f(t)(g(t))
     }
   }
-
-  def pure[F[_] : Applicative, A](a: ⇒ A) = implicitly[Applicative[F]].pure[A](a)
-
-  def app[F[_] : Applicative, A, B](f: F[A ⇒ B])(a: F[A]) = implicitly[Applicative[F]].app(f)(a)
 }

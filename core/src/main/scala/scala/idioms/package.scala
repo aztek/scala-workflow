@@ -2,39 +2,48 @@ package scala
 
 import language.experimental.macros
 import language.higherKinds
-import reflect.macros.Context
+import reflect.macros.{TypecheckException, Context}
 
 package object idioms {
   def idiom[F[_]](code: _): _ = macro idiomImpl
-  def idiomImpl(c: Context)(code: c.Tree): c.Tree = code
+  def idiomImpl(c: Context)(code: c.Tree): c.Tree = {
+    import c.universe._
+
+    val Apply(TypeApply(_, List(applicative)), _) = c.macroApplication
+
+    val (pure, app) = resolveApplicative(c)(applicative.tpe)
+
+    c.macroApplication.updateAttachment(pure)
+    c.macroApplication.updateAttachment(app)
+
+    code
+  }
 
   def $ (code: _): _ = macro bracketsImpl
   def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
-    def applicativeType: c.universe.TypeTree = {
+    def applicativeContext: (c.universe.TypeTree, c.universe.Tree, c.universe.Tree) = {
       for (context ← c.openMacros) {
         import context.universe._
         context.macroApplication match {
-          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), _), TermName("idiom")), List(functorType)), _) ⇒
-            return functorType.asInstanceOf[c.universe.TypeTree]
+          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), _), TermName("idiom")), List(applicative)), _) ⇒
+            val attachments = context.macroApplication.attachments
+            val Pure(pure)  = attachments.get[Pure].get
+            val App(app)    = attachments.get[App].get
+            return (applicative.asInstanceOf[c.universe.TypeTree],
+                    pure.asInstanceOf[c.universe.Tree],
+                    app.asInstanceOf[c.universe.Tree])
           case _ ⇒
         }
       }
       c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
     }
 
-    val applicativeTypeSymbol = applicativeType.tpe.typeSymbol
+    val (applicative, pure, app) = applicativeContext
 
     import c.universe._
 
-    val applicativeRef = Select(Select(Ident(TermName("scala")), TermName("idioms")), TermName("Applicative"))
-    val pure = Select(applicativeRef, TermName("pure"))
-    val app  = Select(applicativeRef, TermName("app"))
-
     def expandBrackets(expr: Tree): Tree = {
-      def liftLambda(lambda: Tree) = {
-        val tpe = c.typeCheck(lambda).tpe
-        Apply(TypeApply(pure, List(Ident(applicativeTypeSymbol), TypeTree(tpe))), List(lambda))
-      }
+      def liftLambda(lambda: Tree) = Apply(pure, List(lambda))
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
         args.foldLeft(liftedLambda) {
@@ -64,7 +73,7 @@ package object idioms {
 
     def isLifted(arg: Tree) = {
       val baseClasses = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses
-      baseClasses contains applicativeTypeSymbol
+      baseClasses contains applicative.tpe.typeSymbol
     }
 
     type Binds = List[(TermName, Tree)]
@@ -89,4 +98,27 @@ package object idioms {
 
     expandBrackets(code)
   }
+
+  private def resolveApplicative(c: Context)(tpe: c.Type) = {
+    import c.universe._
+
+    val typeref = TypeRef(NoPrefix, typeOf[Applicative[Option]].typeSymbol, List(tpe))
+
+    try {
+      val instance = c.inferImplicitValue(typeref)
+
+      val pure = Select(instance, TermName("pure"))
+      val app  = Select(instance, TermName("app"))
+
+      (Pure(pure), App(app))
+    } catch {
+      case e: TypecheckException ⇒
+        c.abort(c.enclosingPosition, s"Unable to find $typeref instance in implicit scope")
+    }
+  }
+}
+
+package idioms {
+  private[idioms] case class Pure(tree: Any)
+  private[idioms] case class App (tree: Any)
 }
