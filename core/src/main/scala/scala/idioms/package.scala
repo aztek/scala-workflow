@@ -13,26 +13,20 @@ package object idioms {
 
     val (pure, app) = resolveApplicative(c)(applicative.tpe)
 
-    c.macroApplication.updateAttachment(pure)
-    c.macroApplication.updateAttachment(app)
+    c.macroApplication.updateAttachment(ApplicativeContext(applicative, pure, app))
 
     code
   }
 
   def $ (code: _): _ = macro bracketsImpl
   def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
-    def applicativeContext: (c.universe.TypeTree, c.universe.Tree, c.universe.Tree) = {
+    import c.universe._
+
+    def applicativeContext: (TypeTree, Tree, Tree) = {
       for (context ← c.openMacros) {
-        import context.universe._
-        context.macroApplication match {
-          case Apply(TypeApply(Select(Select(This(TypeName("idioms")), _), TermName("idiom")), List(applicative)), _) ⇒
-            val attachments = context.macroApplication.attachments
-            val Pure(pure)  = attachments.get[Pure].get
-            val App(app)    = attachments.get[App].get
-            return (applicative.asInstanceOf[c.universe.TypeTree],
-                    pure.asInstanceOf[c.universe.Tree],
-                    app.asInstanceOf[c.universe.Tree])
-          case _ ⇒
+        val attachments = context.macroApplication.attachments
+        for (ApplicativeContext(applicative, pure, app) ← attachments.get[ApplicativeContext]) {
+          return (applicative.asInstanceOf[TypeTree], pure.asInstanceOf[Tree], app.asInstanceOf[Tree])
         }
       }
       c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
@@ -40,9 +34,7 @@ package object idioms {
 
     val (applicative, pure, app) = applicativeContext
 
-    import c.universe._
-
-    def expandBrackets(expr: Tree): Tree = {
+    def expandBrackets(expr: Tree) = {
       def liftLambda(lambda: Tree) = Apply(pure, List(lambda))
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
@@ -110,7 +102,7 @@ package object idioms {
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
 
-      (Pure(pure), App(app))
+      (pure, app)
     } catch {
       case e: TypecheckException ⇒
         c.abort(c.enclosingPosition, s"Unable to find $typeref instance in implicit scope")
@@ -119,6 +111,5 @@ package object idioms {
 }
 
 package idioms {
-  private[idioms] case class Pure(tree: Any)
-  private[idioms] case class App (tree: Any)
+  private[idioms] case class ApplicativeContext(tpe: Any, pure: Any, app: Any)
 }
