@@ -18,8 +18,8 @@ package object idioms {
     code
   }
 
-  def $ (code: _): _ = macro bracketsImpl
-  def bracketsImpl(c: Context)(code: c.Tree): c.Tree = {
+  def $ (code: _): _ = macro $impl
+  def $impl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
     def applicativeContext: (TypeTree, Tree, Tree) = {
