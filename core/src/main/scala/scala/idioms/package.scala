@@ -11,7 +11,7 @@ package object idioms {
 
     val Apply(TypeApply(_, List(applicative)), _) = c.macroApplication
 
-    val (pure, app) = resolveApplicative(c)(applicative.tpe)
+    val (pure, app) = resolveApplicative(c)(applicative)
 
     c.macroApplication.updateAttachment(ApplicativeContext(applicative, pure, app))
 
@@ -91,13 +91,13 @@ package object idioms {
     expandBrackets(code)
   }
 
-  private def resolveApplicative(c: Context)(tpe: c.Type) = {
+  private def resolveApplicative(c: Context)(typeTree: c.Tree) = {
     import c.universe._
 
-    val typeref = TypeRef(NoPrefix, typeOf[Applicative[Option]].typeSymbol, List(tpe))
+    val typeref = TypeRef(NoPrefix, typeOf[Applicative[Option]].typeSymbol, List(typeTree.tpe))
 
     try {
-      val instance = c.inferImplicitValue(typeref)
+      val instance = c.inferImplicitValue(typeref, silent=false)
 
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
@@ -105,7 +105,7 @@ package object idioms {
       (pure, app)
     } catch {
       case e: TypecheckException ⇒
-        c.abort(c.enclosingPosition, s"Unable to find $typeref instance in implicit scope")
+        c.abort(typeTree.pos, s"Unable to find $typeref instance in implicit scope")
     }
   }
 }
