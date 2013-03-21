@@ -19,6 +19,16 @@ object Applicative {
     def app[A, B](fs: List[A ⇒ B]) = as ⇒ for (f ← fs; a ← as) yield f(a)
   }
 
+  implicit val set = new Applicative[Set] {
+    def pure[A](a: ⇒ A) = Set(a)
+    def app[A, B](fs: Set[A ⇒ B]) = as ⇒ for (f ← fs; a ← as) yield f(a)
+  }
+
+  implicit val array = new Applicative[Array] {
+    def pure[A](a: ⇒ A) = Array(a)
+    def app[A, B](fs: Array[A ⇒ B]) = as ⇒ for (f ← fs; a ← as) yield f(a)
+  }
+
   implicit val try_ = new Applicative[Try] {
     def pure[A](a: ⇒ A) = Try(a)
     def app[A, B](ff: Try[A ⇒ B]) = aa ⇒ for (f ← ff; a ← aa) yield f(a)
