@@ -9,13 +9,30 @@ package object idioms {
   def idiomImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
-    val Apply(TypeApply(_, List(idiom)), _) = c.macroApplication
+    val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
+    val tpe = typeTree.tpe
 
-    val (pure, app) = resolveIdiom(c)(idiom)
-
-    c.macroApplication.updateAttachment(IdiomaticContext(idiom, pure, app))
+    try {
+      val (pure, app) = resolveIdiom(c)(tpe)
+      c.macroApplication.updateAttachment(IdiomaticContext(tpe, pure, app))
+    } catch {
+      case e: TypecheckException ⇒
+        c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
+    }
 
     code
+  }
+
+  private def resolveIdiom(c: Context)(tpe: c.Type) = {
+    import c.universe._
+
+    val typeref = TypeRef(NoPrefix, typeOf[Idiom[Any]].typeSymbol, List(tpe))
+    val instance = c.inferImplicitValue(typeref, silent=false)
+
+    val pure = Select(instance, TermName("pure"))
+    val app  = Select(instance, TermName("app"))
+
+    (pure, app)
   }
 
   object idiom {
@@ -30,7 +47,7 @@ package object idioms {
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
 
-      c.macroApplication.updateAttachment(IdiomaticContext(TypeTree(tpe), pure, app))
+      c.macroApplication.updateAttachment(IdiomaticContext(tpe, pure, app))
 
       code
     }
@@ -40,11 +57,11 @@ package object idioms {
   def $impl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
-    def idiomaticContext: (TypeTree, Tree, Tree) = {
+    def idiomaticContext: (Type, Tree, Tree) = {
       for (context ← c.openMacros) {
         val attachments = context.macroApplication.attachments
         for (IdiomaticContext(idiom, pure, app) ← attachments.get[IdiomaticContext]) {
-          return (idiom.asInstanceOf[TypeTree], pure.asInstanceOf[Tree], app.asInstanceOf[Tree])
+          return (idiom.asInstanceOf[Type], pure.asInstanceOf[Tree], app.asInstanceOf[Tree])
         }
       }
       c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
@@ -60,12 +77,12 @@ package object idioms {
           (tree, arg) ⇒ Apply(Apply(app, List(tree)), List(arg))
         }
 
-      val (lambda, args) = composeLiftableLambda(expr)
+      val (lambda, args) = composeLambda(expr)
 
       liftApplication(liftLambda(lambda), args)
     }
 
-    def composeLiftableLambda(code: Tree) = {
+    def composeLambda(code: Tree) = {
       val (body, binds) = extractLambdaBody(code)
       val lambda = binds.foldRight(body) {
         (bind, tree) ⇒
@@ -83,7 +100,7 @@ package object idioms {
 
     def isLifted(arg: Tree) = {
       val baseClasses = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses
-      baseClasses contains idiom.tpe.typeSymbol
+      baseClasses contains idiom.typeSymbol
     }
 
     type Binds = List[(TermName, Tree)]
@@ -107,24 +124,6 @@ package object idioms {
     }
 
     expandBrackets(code)
-  }
-
-  private def resolveIdiom(c: Context)(typeTree: c.Tree) = {
-    import c.universe._
-
-    val typeref = TypeRef(NoPrefix, typeOf[Idiom[Option]].typeSymbol, List(typeTree.tpe))
-
-    try {
-      val instance = c.inferImplicitValue(typeref, silent=false)
-
-      val pure = Select(instance, TermName("pure"))
-      val app  = Select(instance, TermName("app"))
-
-      (pure, app)
-    } catch {
-      case e: TypecheckException ⇒
-        c.abort(typeTree.pos, s"Unable to find $typeref instance in implicit scope")
-    }
   }
 }
 
