@@ -2,6 +2,8 @@ package scala.idioms
 
 import language.higherKinds
 import util.Try
+import concurrent.Future
+import concurrent.ExecutionContext.Implicits.global
 
 trait Applicative[F[_]] {
   def pure[T](t: ⇒ T): F[T]
@@ -27,6 +29,11 @@ object Applicative {
   implicit val try_ = new Applicative[Try] {
     def pure[A](a: ⇒ A) = Try(a)
     def app[A, B](ff: Try[A ⇒ B]) = aa ⇒ for (f ← ff; a ← aa) yield f(a)
+  }
+
+  implicit val future = new Applicative[Future] {
+    def pure[A](a: ⇒ A) = Future(a)
+    def app[A, B](ff: Future[A ⇒ B]) = fa ⇒ for (f ← ff; a ← fa) yield f(a)
   }
 
   implicit def left[T] = {
