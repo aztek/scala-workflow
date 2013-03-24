@@ -113,4 +113,11 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
       $((1 + ten) * none)  should equal (None)
     }
   }
+
+  it should "build idiom context from explicitly passed applicative instance" in {
+    idiom(Applicative.list) {
+      $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
+      $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
+    }
+  }
 }

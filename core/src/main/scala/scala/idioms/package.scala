@@ -18,6 +18,24 @@ package object idioms {
     code
   }
 
+  object idiom {
+    def apply[F[_]](applicative: Applicative[F])(code: _): _ = macro idiomImpl[F]
+    def idiomImpl[F[_]](c: Context)(applicative: c.Expr[Applicative[F]])(code: c.Tree): c.Tree = {
+      import c.universe._
+
+      val Expr(instance) = applicative
+      val RefinedType(applicativeParents, _) = c.typeCheck(instance.duplicate).tpe
+      val TypeRef(_, _, tpe :: _) = applicativeParents.last
+
+      val pure = Select(instance, TermName("pure"))
+      val app  = Select(instance, TermName("app"))
+
+      c.macroApplication.updateAttachment(ApplicativeContext(TypeTree(tpe), pure, app))
+
+      code
+    }
+  }
+
   def $ (code: _): _ = macro $impl
   def $impl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
