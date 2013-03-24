@@ -10,29 +10,11 @@ package object idioms {
     import c.universe._
 
     val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
-    val tpe = typeTree.tpe
 
-    try {
-      val (pure, app) = resolveIdiom(c)(tpe)
-      c.macroApplication.updateAttachment(IdiomaticContext(tpe, pure, app))
-    } catch {
-      case e: TypecheckException ⇒
-        c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
-    }
+    val (pure, app) = resolveIdiom(c)(typeTree)
+    c.macroApplication.updateAttachment(IdiomaticContext(typeTree.tpe, pure, app))
 
     code
-  }
-
-  private def resolveIdiom(c: Context)(tpe: c.Type) = {
-    import c.universe._
-
-    val typeref = TypeRef(NoPrefix, typeOf[Idiom[Any]].typeSymbol, List(tpe))
-    val instance = c.inferImplicitValue(typeref, silent=false)
-
-    val pure = Select(instance, TermName("pure"))
-    val app  = Select(instance, TermName("app"))
-
-    (pure, app)
   }
 
   object idiom {
@@ -72,16 +54,27 @@ package object idioms {
       }
       enclosingIdiomaticContext
     } else {
-      val tpe = typeTree.tpe
-      try {
-        val (pure, app) = resolveIdiom(c)(tpe)
-        IdiomaticContext(tpe, pure, app)
-      } catch {
-        case e: TypecheckException ⇒
-          c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
-      }
+      val (pure, app) = resolveIdiom(c)(typeTree)
+      IdiomaticContext(typeTree.tpe, pure, app)
     }
     expandBrackets(c)(code, idiomaticContext).asInstanceOf[Tree]
+  }
+
+  private def resolveIdiom(c: Context)(typeTree: c.Tree) = {
+    import c.universe._
+
+    try {
+      val typeref = TypeRef(NoPrefix, typeOf[Idiom[Any]].typeSymbol, List(typeTree.tpe))
+      val instance = c.inferImplicitValue(typeref, silent=false)
+
+      val pure = Select(instance, TermName("pure"))
+      val app  = Select(instance, TermName("app"))
+
+      (pure, app)
+    } catch {
+      case e: TypecheckException ⇒
+        c.abort(typeTree.pos, s"Unable to find ${typeTree.tpe} instance in implicit scope")
+    }
   }
 
   private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
