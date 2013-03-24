@@ -114,10 +114,17 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  it should "build idiom context from explicitly passed applicative instance" in {
+  it should "build idiomatic context from explicitly passed idiom instance" in {
     idiom(Idiom.list) {
       $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
+    }
+  }
+
+  it should "resolve idiomatic context from passed idiom type" in {
+    $[Option](ten - (six / 2)) should equal (Some(7))
+    idiom[Option] {
+      $[List](List(1, 2, 3) * 2) should equal (List(2, 4, 6)) // disregard enclosing idiom block
     }
   }
 }

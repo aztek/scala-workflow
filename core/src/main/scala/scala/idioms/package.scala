@@ -53,23 +53,44 @@ package object idioms {
     }
   }
 
-  def $ (code: _): _ = macro $impl
-  def $impl(c: Context)(code: c.Tree): c.Tree = {
+  def $[F[_]](code: _): _ = macro $impl[F]
+  def $impl[F[_]](c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
-    def idiomaticContext: (Type, Tree, Tree) = {
-      for (context ← c.openMacros) {
-        val attachments = context.macroApplication.attachments
-        for (IdiomaticContext(idiom, pure, app) ← attachments.get[IdiomaticContext]) {
-          return (idiom.asInstanceOf[Type], pure.asInstanceOf[Tree], app.asInstanceOf[Tree])
+    val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
+
+    var idiomaticContext: IdiomaticContext = null
+    if (typeTree.asInstanceOf[TypeTree].original == null) {
+      // No type was provided, look into enclosing idiom block
+      def enclosingIdiomaticContext: IdiomaticContext = {
+        for (context ← c.openMacros) {
+          val attachments = context.macroApplication.attachments
+          for (idiomaticContext ← attachments.get[IdiomaticContext]) {
+            return idiomaticContext
+          }
         }
+        c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
       }
-      c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
+      idiomaticContext = enclosingIdiomaticContext
+    } else {
+      val tpe = typeTree.tpe
+      try {
+        val (pure, app) = resolveIdiom(c)(tpe)
+        idiomaticContext = IdiomaticContext(tpe, pure, app)
+      } catch {
+        case e: TypecheckException ⇒
+          c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
+      }
     }
+    expandBrackets(c)(code, idiomaticContext).asInstanceOf[Tree]
+  }
 
-    val (idiom, pure, app) = idiomaticContext
+  private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
+    import c.universe._
 
-    def expandBrackets(expr: Tree) = {
+    val IdiomaticContext(idiom: Type, pure: Tree, app: Tree) = idiomaticContext
+
+    def expand(expr: Tree) = {
       def liftLambda(lambda: Tree) = Apply(pure, List(lambda))
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
@@ -123,7 +144,7 @@ package object idioms {
         (expr, Nil)
     }
 
-    expandBrackets(code)
+    expand(code)
   }
 }
 
