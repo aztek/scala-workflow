@@ -17,16 +17,26 @@ package object idioms {
   }
 
   object idiom {
-    def apply[F[_]](idiom: Idiom[F])(code: _): _ = macro idiomImpl[F]
-    def idiomImpl[F[_]](c: Context)(idiom: c.Expr[Idiom[F]])(code: c.Tree): c.Tree = {
+    def apply(idiom: Any)(code: _): _ = macro idiomImpl
+    def idiomImpl(c: Context)(idiom: c.Expr[Any])(code: c.Tree): c.Tree = {
       import c.universe._
 
       val Expr(instance) = idiom
 
+      val RefinedType(parents, _) = instance.tpe
+
+      val instanceType = parents find {
+        case TypeRef(_, sym, _) => sym.fullName == "scala.idioms.Idiom"
+      } getOrElse {
+        c.abort(instance.pos, "Not an idiom")
+      }
+
+      instance.setType(instanceType)
+
+      val TypeRef(_, _, List(tpe)) = instanceType
+
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
-
-      val RefinedType(_ :+ TypeRef(_, _, tpe :: _), _) = c.typeCheck(instance.duplicate).tpe
 
       c.macroApplication.updateAttachment(IdiomaticContext(tpe, pure, app))
 
@@ -94,16 +104,27 @@ package object idioms {
       liftApplication(liftLambda(lambda), args)
     }
 
+    def resolveLiftedType(tpe: Type): Type = {
+      val TypeRef(_, _, typeArgs) = tpe
+      idiom match {
+        case PolyType(List(wildcard), TypeRef(_, _, idiomTypeArgs)) ⇒
+          // When idiom is passed as type lambda, we need to take the type
+          // from wildcard position
+          typeArgs(idiomTypeArgs map (_.typeSymbol) indexOf (wildcard))
+        case _ ⇒
+          // This only works for type constructor of one argument
+          // TODO: provide implementation for n-arity type constructors
+          typeArgs.head
+      }
+    }
+
     def composeLambda(code: Tree) = {
       val (body, binds) = extractLambdaBody(code)
       val lambda = binds.foldRight(body) {
         (bind, tree) ⇒
           val (name, arg) = bind
-          val skolem = c.typeCheck(arg).tpe match {
-            case TypeRef(_, _, s :: _) ⇒ TypeTree(s)
-            case _ ⇒ c.abort(arg.pos, s"Unable to determine lifted type of $arg")
-          }
-          val valdef = ValDef(Modifiers(), name, skolem, EmptyTree)
+          val skolem = resolveLiftedType(c.typeCheck(arg).tpe)
+          val valdef = ValDef(Modifiers(), name, TypeTree(skolem), EmptyTree)
           Function(List(valdef), tree)
       }
       val (_, args) = binds.unzip
