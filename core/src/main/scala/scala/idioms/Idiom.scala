@@ -8,6 +8,17 @@ import util.Try
 trait Idiom[F[_]] {
   def pure[T](t: ⇒ T): F[T]
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
+
+  def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
+}
+
+/** Idioms transformer
+  * Idioms are know to be composable. IdiomT provides an implementation
+  * of Idiom[ F [ G ] ] by given Idiom[F] and Idiom[G].
+  */
+class IdiomT[F[_], G[_]](f: Idiom[F], g: Idiom[G]) extends Idiom[({type λ[α] = F[G[α]]})#λ] {
+  def pure[T](t: ⇒ T) = f.pure(g.pure(t))
+  def app[A, B](h: F[G[A ⇒ B]]) = f.app((f.app[G[A ⇒ B], G[A] ⇒ G[B]](f.pure(g.app _)))(h))
 }
 
 object Idiom {

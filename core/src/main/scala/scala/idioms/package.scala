@@ -23,12 +23,17 @@ package object idioms {
 
       val Expr(instance) = idiom
 
-      val RefinedType(parents, _) = instance.tpe
-
-      val instanceType = parents find {
-        case TypeRef(_, sym, _) => sym.fullName == "scala.idioms.Idiom"
-      } getOrElse {
-        c.abort(instance.pos, "Not an idiom")
+      val instanceType = instance.tpe match {
+        case RefinedType(parents, _) ⇒
+          parents find {
+            case TypeRef(_, sym, _) => sym.fullName == "scala.idioms.Idiom"
+          } getOrElse {
+            c.abort(instance.pos, "Not an idiom")
+          }
+        case tpe @ TypeRef(_, sym, _) if sym.fullName == "scala.idioms.IdiomT" ⇒
+          // we know, that IdiomT is a direct ancestor of Idiom,
+          // so simply take the second element of the list
+          tpe.baseType(tpe.baseClasses(1))
       }
 
       instance.setType(instanceType)
@@ -107,10 +112,26 @@ package object idioms {
     def resolveLiftedType(tpe: Type): Type = {
       val TypeRef(_, _, typeArgs) = tpe
       idiom match {
-        case PolyType(List(wildcard), TypeRef(_, _, idiomTypeArgs)) ⇒
+        case PolyType(List(wildcard), typeRef: TypeRef) ⇒
           // When idiom is passed as type lambda, we need to take the type
-          // from wildcard position
-          typeArgs(idiomTypeArgs map (_.typeSymbol) indexOf (wildcard))
+          // from wildcard position, so we zip through both typerefs to seek for a substitution
+          def findSubstitution(wildcardedType: Type, concreteType: Type): Option[Type] = {
+            if (wildcardedType.typeSymbol == wildcard)
+              Some(concreteType)
+            else
+              (wildcardedType, concreteType) match {
+                case (wctpe: TypeRef, ctpe: TypeRef) ⇒
+                  wctpe.args zip ctpe.args map {
+                    case (wct, at) ⇒ findSubstitution(wct, at)
+                  } collectFirst {
+                    case Some(t) ⇒ t
+                  }
+                case _ ⇒ None
+              }
+          }
+          findSubstitution(typeRef, tpe) getOrElse {
+            c.abort(c.enclosingPosition, "Unable to lift argument to an idiom")
+          }
         case _ ⇒
           // This only works for type constructor of one argument
           // TODO: provide implementation for n-arity type constructors
