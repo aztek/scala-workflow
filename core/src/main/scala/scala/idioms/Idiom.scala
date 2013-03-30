@@ -57,6 +57,11 @@ object Idiom {
     def app[A, B](ef: Either[T, A ⇒ B]) = ea ⇒ for (f ← ef.right; a ← ea.right) yield f(a)
   }
 
+  implicit def partialFunction[R] = new Idiom[({type λ[α] = PartialFunction[R, α]})#λ] {
+    def pure[A](a: ⇒ A) = { case _ ⇒ a }
+    def app[A, B](f: PartialFunction[R, A ⇒ B]) = g ⇒ { case t ⇒ f(t)(g(t)) }
+  }
+
   implicit def function[R] = new Idiom[({type λ[α] = R ⇒ α})#λ] {
     def pure[A](a: ⇒ A) = (_: R) ⇒ a
     def app[A, B](f: R ⇒ A ⇒ B) = g ⇒ t ⇒ f(t)(g(t))
