@@ -30,6 +30,8 @@ package object idioms {
           } getOrElse {
             c.abort(instance.pos, "Not an idiom")
           }
+        case tpe @ TypeRef(_, sym, _) if sym.fullName == "scala.idioms.Idiom" ⇒
+          tpe
         case tpe @ TypeRef(_, sym, _) if sym.fullName == "scala.idioms.IdiomT" ⇒
           // we know, that IdiomT is a direct ancestor of Idiom,
           // so simply take the second element of the list

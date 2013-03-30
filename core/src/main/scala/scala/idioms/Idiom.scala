@@ -9,7 +9,7 @@ trait Idiom[F[_]] {
   def pure[T](t: ⇒ T): F[T]
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 
-  def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
+  def $ [G[_]](g: Idiom[G]): Idiom[({type λ[α] = F[G[α]]})#λ] = new IdiomT(this, g)
 }
 
 /** Idioms transformer

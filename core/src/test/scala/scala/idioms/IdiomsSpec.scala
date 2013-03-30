@@ -3,6 +3,8 @@ package scala.idioms
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
+import Idiom._
+
 class IdiomsSpec extends FlatSpec with ShouldMatchers {
   behavior of "Idiom"
 
@@ -115,7 +117,7 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "build idiomatic context from explicitly passed idiom instance" in {
-    idiom(Idiom.list) {
+    idiom(list) {
       $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
@@ -125,6 +127,24 @@ class IdiomsSpec extends FlatSpec with ShouldMatchers {
     $[Option](ten - (six / 2)) should equal (Some(7))
     idiom[Option] {
       $[List](List(1, 2, 3) * 2) should equal (List(2, 4, 6)) // disregard enclosing idiom block
+    }
+  }
+
+  it should "build idiomatic context for idioms composition" in {
+    idiom(list $ option) {
+      val xs = List(Some(2), Some(3), None)
+      val ys = List(None, Some(4), Some(5))
+
+      $(xs * 10) should equal (List(Some(20), Some(30), None))
+      $(xs + ys) should equal (List(None, Some(6), Some(7), None, Some(7), Some(8), None, None, None))
+    }
+
+    idiom(list $ option $ option) {
+      val xs = List(Some(None), Some(Some(2)), None)
+      val ys = List(None, Some(None), Some(Some(5)))
+
+      $(xs + 3)  should equal (List(Some(None), Some(Some(5)), None))
+      $(xs * ys) should equal (List(None, Some(None), Some(None), None, Some(None), Some(Some(10)), None, None, None))
     }
   }
 }
