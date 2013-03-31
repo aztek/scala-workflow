@@ -113,8 +113,8 @@ def parse(json: Json): Option[Person] =
     name ← parseName(json)
     birthday ← parseBirthday(json)
   } yield {
-    val id = parseId(json)     // say, we're confident, that
-    val dept = parseDept(json) // those can be extracted
+    val id = parseId(json)
+    val dept = parseDept(json)
     Person(id, name, new Date(birthday), dept)
   }
 ```
