@@ -47,6 +47,11 @@ object Idiom {
     def app[A, B](ff: Future[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
   }
 
+  implicit val stream = new Idiom[Stream] {
+    def pure[A](a: ⇒ A) = Stream.continually(a)
+    def app[A, B](f: Stream[A ⇒ B]) = xs ⇒ (f, xs).zipped map (_ apply _)
+  }
+
   implicit def left[T] = new Idiom[({type λ[α] = Either[α, T]})#λ] {
     def pure[A](a: ⇒ A) = Left(a)
     def app[A, B](ef: Either[A ⇒ B, T]) = ea ⇒ for (f ← ef.left; a ← ea.left) yield f(a)
