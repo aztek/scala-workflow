@@ -5,7 +5,7 @@ import org.scalatest.matchers.ShouldMatchers
 
 import Idiom._
 
-class IdiomsSpec extends FlatSpec with ShouldMatchers {
+class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
   behavior of "Idiom"
 
   val ten:   Option[Int] = Some(10)
