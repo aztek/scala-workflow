@@ -6,7 +6,7 @@ import util.{Success, Try}
 
 import Idiom._
 
-class InstancesSpec extends FlatSpec with ShouldMatchers {
+class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   behavior of "Built-in idiom instances"
 
   "Options" should "work" in {
