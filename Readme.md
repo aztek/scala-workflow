@@ -1,4 +1,4 @@
-Scala Idioms
+Scala idioms
 ============
 `scala-idioms` is a library, that allows you to organize applicative
 computations nicely with the help of enhanced version of _idiom brackets_.
@@ -38,7 +38,7 @@ What's an idiom?
 ----------------
 Idiom (also called _applicative functor_) is an algebraic structure with two
 operators `pure` and `app` of certain types. Here's how `Idiom` trait is
-defined within `scala-idioms`.
+defined in `scala-idioms`.
 ```scala
 trait Idiom[F[_]] {
   def pure[T](t: ⇒ T): F[T]
@@ -105,8 +105,8 @@ but that feature is not supported yet).
 
 When are idioms useful?
 -----------------------
-Short answer, they might be a shorter substitute of `for`-expressions.
-Consider the examples below, where we parse JSON string to some `Person` object.
+Short answer, they might be a more concise substitute of `for`-expressions.
+Consider the example below, where we parse JSON string to some `Person` object.
 ```scala
 def parse(json: Json): Option[Person] =
   for {
@@ -120,7 +120,7 @@ def parse(json: Json): Option[Person] =
 ```
 
 Note, how the syntax gets rather awkward, when we separate pure values from
-values, extracted from idiomatic context. Using idiom brackets, we can compose
+values, extracted from idiomatic context. With idiom brackets we can compose
 the same code in almost imperative manner. 
 ```scala
 def parse2(json: Json): Option[Person] =
@@ -189,7 +189,7 @@ How does it work?
 -----------------
 Originally, idiom brackets is a fairly simple syntactic transformation, that
 wraps a function in `pure` call and replace each function application with
-`app` call. That way, only a single function, applied to idiom instances is
+`app` call. That way, only a single function, applied to idiom instances, is
 supposed to be put inside the brackets.
 
 Idiom brackets in `scala-idioms` are more flexible and currently support
@@ -212,7 +212,7 @@ idiom(option) {
 ```
 
 The whole expression does not typecheck. `2 * 3` typechecks to `Int` and
-therefore doen't need to be lifted. `Some(10) + Some(5)`, does not typecheck,
+therefore doesn't need to be lifted. `Some(10) + Some(5)`, does not typecheck,
 but each of its arguments typechecks to `Option[Int]` (well, technically,
 `Some[Int]`, but we can handle that), so both arguments get lifted.
 
@@ -226,4 +226,4 @@ Contributions
 This project is still very experimental and comments and suggestions are highly
 appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
 [by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](https://github.com/aztek/scala-idioms/issues/new)
-here on GitHub.
+here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
