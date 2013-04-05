@@ -98,19 +98,33 @@ package object idioms {
   private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
     import c.universe._
 
-    val IdiomaticContext(idiom: Type, map: Tree, pure: Option[Tree], app: Option[Tree]) = idiomaticContext
+    val IdiomaticContext(idiom: Type, map: Tree, optPure: Option[Tree], optApp: Option[Tree]) = idiomaticContext
 
     def expand(expr: Tree) = {
-      def liftLambda(lambda: Tree) = Apply(pure.get, List(lambda))
+      def produceMap(lambda: Tree, map: Tree, arg: Tree) = Apply(Apply(map, List(lambda)), List(arg))
 
-      def liftApplication(liftedLambda: Tree, args: List[Tree]) =
-        args.foldLeft(liftedLambda) {
-          (tree, arg) ⇒ Apply(Apply(app.get, List(tree)), List(arg))
+      def producePure(lambda: Tree, pure: Tree) = Apply(pure, List(lambda))
+
+      def produceApp(lambda: Tree, app: Tree, args: List[Tree]) =
+        args.foldLeft(lambda) {
+          (tree, arg) ⇒ Apply(Apply(app, List(tree)), List(arg))
         }
+
+      def produceApplication(lambda: Tree): List[Tree] ⇒ Tree = {
+        case Nil ⇒ optPure match {
+          case Some(pure) ⇒ producePure(lambda, pure)
+          case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointed")
+        }
+        case arg :: Nil ⇒ produceMap(lambda, map, arg)
+        case arg :: restArgs ⇒ optApp match {
+          case Some(app) ⇒ produceApp(produceMap(lambda, map, arg), app, restArgs)
+          case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement SemiIdiom")
+        }
+      }
 
       val (lambda, args) = composeLambda(expr)
 
-      liftApplication(liftLambda(lambda), args)
+      produceApplication(lambda)(args)
     }
 
     def resolveLiftedType(tpe: Type): Type = {
