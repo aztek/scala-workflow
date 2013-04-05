@@ -42,10 +42,11 @@ package object idioms {
 
       val TypeRef(_, _, List(tpe)) = instanceType
 
+      val map  = Select(instance, TermName("map"))
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
 
-      c.macroApplication.updateAttachment(IdiomaticContext(tpe, pure, app))
+      c.macroApplication.updateAttachment(IdiomaticContext(tpe, map, Some(pure), Some(app)))
 
       code
     }
@@ -83,10 +84,11 @@ package object idioms {
       val typeref = TypeRef(NoPrefix, typeOf[Idiom[Any]].typeSymbol, List(tpe))
       val instance = c.inferImplicitValue(typeref, silent=false)
 
+      val map  = Select(instance, TermName("map"))
       val pure = Select(instance, TermName("pure"))
       val app  = Select(instance, TermName("app"))
 
-      IdiomaticContext(tpe, pure, app)
+      IdiomaticContext(tpe, map, Some(pure), Some(app))
     } catch {
       case e: TypecheckException ⇒
         c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
@@ -96,14 +98,14 @@ package object idioms {
   private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
     import c.universe._
 
-    val IdiomaticContext(idiom: Type, pure: Tree, app: Tree) = idiomaticContext
+    val IdiomaticContext(idiom: Type, map: Tree, pure: Option[Tree], app: Option[Tree]) = idiomaticContext
 
     def expand(expr: Tree) = {
-      def liftLambda(lambda: Tree) = Apply(pure, List(lambda))
+      def liftLambda(lambda: Tree) = Apply(pure.get, List(lambda))
 
       def liftApplication(liftedLambda: Tree, args: List[Tree]) =
         args.foldLeft(liftedLambda) {
-          (tree, arg) ⇒ Apply(Apply(app, List(tree)), List(arg))
+          (tree, arg) ⇒ Apply(Apply(app.get, List(tree)), List(arg))
         }
 
       val (lambda, args) = composeLambda(expr)
@@ -184,5 +186,5 @@ package object idioms {
 }
 
 package idioms {
-  private[idioms] case class IdiomaticContext(tpe: Any, pure: Any, app: Any)
+  private[idioms] case class IdiomaticContext(tpe: Any, map: Any, pure: Option[Any], app: Option[Any])
 }
