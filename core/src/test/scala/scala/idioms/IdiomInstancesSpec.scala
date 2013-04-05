@@ -83,6 +83,13 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  "Ids" should "work" in {
+    // it does nothing, actually
+    idiom(id) {
+      $(1 + 2) should equal (1 + 2)
+    }
+  }
+
   "Partial functions" should "work" in {
     idiom(partialFunction[Int]) {
       val foo: PartialFunction[Int, String] = {
