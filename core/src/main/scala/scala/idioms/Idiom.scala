@@ -5,13 +5,12 @@ import concurrent.ExecutionContext.Implicits.global
 import language.higherKinds
 import util.Try
 
-trait Idiom[F[_]] extends SemiIdiom[F] {
-  def pure[T](t: ⇒ T): F[T]
+trait Idiom[F[_]] extends SemiIdiom[F] with Pointed[F] {
   def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
 }
 
 class IdiomT[F[_], G[_]](f: Idiom[F], g: Idiom[G]) extends SemiIdiomT(f, g) with Idiom[({type λ[α] = F[G[α]]})#λ] {
-  def pure[A](a: ⇒ A) = f pure (g pure a)
+  def pure[A](a: ⇒ A) = new PointedT(f, g).pure(a)
 }
 
 object Idiom {
@@ -71,7 +70,7 @@ object Idiom {
 
   implicit def function[R] = new Idiom[({type λ[α] = R ⇒ α})#λ] {
     def pure[A](a: ⇒ A) = _ ⇒ a
-    def map[A, B](f: A ⇒ B) = f compose _
+    def map[A, B](f: A ⇒ B) = g ⇒ r ⇒ f(g(r))
     def app[A, B](f: R ⇒ A ⇒ B) = g ⇒ t ⇒ f(t)(g(t))
   }
 
