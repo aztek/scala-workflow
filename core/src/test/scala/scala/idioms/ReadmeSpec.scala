@@ -20,14 +20,19 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
 
-    import concurrent.{Await, Future}
-    import concurrent.ExecutionContext.Implicits.global
-    import concurrent.duration._
-    idiom[Future] {
-      def slowPlus(x: Int, y: Int) = { Thread.sleep(900); x + y }
-      val a = Future(slowPlus(1, 3))
-      val b = Future(slowPlus(2, 4))
-      Await.result($(a * b + 3), 1 second) should equal (27)
+    idiom(zipList) {
+      $(List(1, 2, 3, 4) * List(2, 3, 4)) should equal (List(2, 6, 12))
+    }
+
+    idiom(function[String]) {
+      val chars   = (s: String) ⇒ s.length
+      val letters = (s: String) ⇒ s.count(_.isLetter)
+      val nonletters = $(chars - letters)
+      nonletters("R2-D2") should equal (3)
+    }
+
+    idiom(map[String]) {
+      $(Map("foo" → 10, "bar" → 5) * 2) should equal (Map("foo" → 20, "bar" → 10))
     }
   }
 
