@@ -56,8 +56,17 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Streams" should "work" in {
     idiom[Stream] {
-      $(Stream("a", "b", "c") + Stream("x", "y", "z", "t")) should equal (Stream("ax", "by", "cz"))
-      $(Stream(1, 2, 3, 4, 5) * 2) should equal (Stream(2, 4, 6, 8, 10))
+      $(Stream(1, 2, 3) + 1) should equal (Stream(2, 3, 4))
+      $(Stream("a", "b") + Stream("x", "y")) should equal (Stream("ax", "ay", "bx", "by"))
+    }
+  }
+
+  "ZipStream" should "work" in {
+    idiom(zipStream) {
+      val a = Stream.from(1)
+      $(2).take(5) should equal (Stream(2, 2, 2, 2, 2))
+      $(a + 1).take(5) should equal (Stream(2, 3, 4, 5, 6))
+      $(a * a).take(5) should equal (Stream(1, 4, 9, 16, 25))
     }
   }
 

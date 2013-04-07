@@ -16,6 +16,6 @@ object SemiIdiom extends SemiIdiomInstances
 trait SemiIdiomInstances {
   val zipList = new SemiIdiom[List] {
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: List[A ⇒ B]) = xs ⇒ (ff, xs).zipped map (_ apply _)
+    def app[A, B](fs: List[A ⇒ B]) = _ zip fs map { case (a, f) ⇒ f(a) }
   }
 }

@@ -45,9 +45,15 @@ trait IdiomInstances {
   }
 
   implicit val stream = new Idiom[Stream] {
+    def pure[A](a: ⇒ A) = Stream(a)
+    def map[A, B](f: A ⇒ B) = _ map f
+    def app[A, B](fs: Stream[A ⇒ B]) = for (f ← fs; a ← _) yield f(a)
+  }
+
+  val zipStream = new Idiom[Stream] {
     def pure[A](a: ⇒ A) = Stream.continually(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](f: Stream[A ⇒ B]) = xs ⇒ (f, xs).zipped map (_ apply _)
+    def app[A, B](fs: Stream[A ⇒ B]) = _ zip fs map { case (a, f) ⇒ f(a) }
   }
 
   implicit def left[T] = new Idiom[({type λ[α] = Either[α, T]})#λ] {
