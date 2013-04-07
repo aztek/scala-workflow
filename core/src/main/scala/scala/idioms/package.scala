@@ -27,7 +27,7 @@ package object idioms {
       val instanceType = instance.tpe match {
         case RefinedType(parents, _) ⇒
           parents find {
-            case TypeRef(_, sym, _) => sym.fullName == "scala.idioms.Idiom"
+            case TypeRef(_, sym, _) ⇒ sym.fullName == "scala.idioms.Idiom"
           } getOrElse {
             c.abort(instance.pos, "Not an idiom")
           }
