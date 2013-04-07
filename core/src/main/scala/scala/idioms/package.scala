@@ -36,21 +36,11 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     val Apply(TypeApply(_, List(typeTree: TypeTree)), _) = c.macroApplication
 
-    val idiomaticContext = if (typeTree.original != null) {
-      resolveIdiomaticContextByType(c)(typeTree)
-    } else {
-      // No type was provided, look into enclosing idiom block
-      def enclosingIdiomaticContext: IdiomaticContext = {
-        for (context ← c.openMacros) {
-          val attachments = context.macroApplication.attachments
-          for (idiomaticContext ← attachments.get[IdiomaticContext]) {
-            return idiomaticContext
-          }
-        }
-        c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
-      }
-      enclosingIdiomaticContext
-    }
+    val idiomaticContext = if (typeTree.original != null)
+                             resolveIdiomaticContextByType(c)(typeTree)
+                           else
+                             resolveIdiomaticContext(c)
+
     expandBrackets(c)(code, idiomaticContext).asInstanceOf[Tree]
   }
 
@@ -129,6 +119,18 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     constructIdiomaticContext(instance.tpe) getOrElse {
       c.abort(instance.pos, "Not an idiom")
+    }
+  }
+
+  private def resolveIdiomaticContext(c: Context) = {
+    val idiomaticContext = for {
+      context ← c.openMacros.view
+      attachments = context.macroApplication.attachments
+      idiomaticContext ← attachments.get[IdiomaticContext]
+    } yield idiomaticContext
+
+    idiomaticContext.headOption getOrElse {
+      c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
     }
   }
 
