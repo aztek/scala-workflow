@@ -6,9 +6,33 @@ import org.scalatest.matchers.ShouldMatchers
 class FunctorInstancesSpec extends FlatSpec with ShouldMatchers {
   behavior of "Built-in functor instances"
 
-  "Tuples" should "work" in {
-    idiom(tupleL[String]) {
+  "2-tuples with fixed left argument" should "work" in {
+    idiom(tupleR[String]) {
       $(("foo", 10) * 2) should equal ("foo", 20)
+    }
+  }
+
+  "2-tuples with fixed right argument" should "work" in {
+    idiom(tupleL[Int]) {
+      $(("foo", 10) + "bar") should equal ("foobar", 10)
+    }
+  }
+
+  "3-tuples with fixed left argument" should "work" in {
+    idiom(tuple3L[Boolean, Int]) {
+      $(("foo", false, 10) + "bar") should equal ("foobar", false, 10)
+    }
+  }
+
+  "3-tuples with fixed middle argument" should "work" in {
+    idiom(tuple3M[String, (Int, Double)]) {
+      $(("foo", 2, (10, 0.5)) * 4) should equal ("foo", 8, (10, 0.5))
+    }
+  }
+
+  "3-tuples with fixed right argument" should "work" in {
+    idiom(tuple3R[String, Unit]) {
+      $(("foo", (), 10) + 2) should equal ("foo", (), 12)
     }
   }
 
