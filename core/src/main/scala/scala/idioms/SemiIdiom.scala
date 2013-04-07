@@ -11,7 +11,9 @@ class SemiIdiomT[F[_], G[_]](f: SemiIdiom[F], g: SemiIdiom[G]) extends FunctorT(
   def app[A, B](h: F[G[A ⇒ B]]) = f app (f map (g.app[A, B] _))(h)
 }
 
-object SemiIdiom {
+object SemiIdiom extends SemiIdiomInstances
+
+trait SemiIdiomInstances {
   val zipList = new SemiIdiom[List] {
     def map[A, B](f: A ⇒ B) = _ map f
     def app[A, B](ff: List[A ⇒ B]) = xs ⇒ (ff, xs).zipped map (_ apply _)

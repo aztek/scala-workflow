@@ -3,8 +3,6 @@ package scala.idioms
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
-import Idiom._
-
 class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
   behavior of "Idiom"
 

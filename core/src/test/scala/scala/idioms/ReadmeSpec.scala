@@ -1,9 +1,9 @@
 package scala.idioms
 
-import Idiom.{function, option}
+import language.higherKinds
+
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import language.higherKinds
 
 /** Auxilary spec to be sure that examples in Readme file are working */
 class ReadmeSpec extends FlatSpec with ShouldMatchers {
@@ -20,9 +20,9 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
 
-    import concurrent._
-    import ExecutionContext.Implicits.global
-    import duration._
+    import concurrent.{Await, Future}
+    import concurrent.ExecutionContext.Implicits.global
+    import concurrent.duration._
     idiom[Future] {
       def slowPlus(x: Int, y: Int) = { Thread.sleep(900); x + y }
       val a = Future(slowPlus(1, 3))
@@ -32,8 +32,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Examples from 'Syntax of idioms'" should "be correct" in {
-    import scala.idioms.Idiom.list
-
     val x = idiom[List] {
       $(List(2, 5) * List(3, 7))
     }
@@ -49,7 +47,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Example from 'Idiom transformers'" should "be correct" in {
-    import Idiom.{list, option}
     idiom(list $ option) {
       val xs = List(Some(2), Some(3), None)
       $(xs * 10) should equal (List(Some(20), Some(30), None))
@@ -126,7 +123,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     eval(testExpr1)(env) should equal (Some(48))
     eval(testExpr2)(env) should equal (None)
   }
-
 
   "Example from 'How does it work?' section" should "be correct" in {
     idiom(option) {

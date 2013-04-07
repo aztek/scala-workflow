@@ -4,8 +4,6 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import util.{Success, Try}
 
-import Idiom._
-
 class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   behavior of "Built-in idiom instances"
 
@@ -42,9 +40,9 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Futures" should "work" in {
-    import concurrent._
-    import ExecutionContext.Implicits.global
-    import duration._
+    import concurrent.{Await, Future, TimeoutException}
+    import concurrent.ExecutionContext.Implicits.global
+    import concurrent.duration._
     idiom[Future] {
       def slowPlus(x: Int, y: Int) = { Thread.sleep(900); x + y }
       val a = Future(slowPlus(1, 3))

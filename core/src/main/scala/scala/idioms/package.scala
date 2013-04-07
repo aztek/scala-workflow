@@ -5,7 +5,7 @@ import language.higherKinds
 
 import reflect.macros.Context
 
-package object idioms {
+package object idioms extends FunctorInstances with SemiIdiomInstances with IdiomInstances {
   def idiom[F[_]](code: _): _ = macro idiomImpl
   def idiomImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._

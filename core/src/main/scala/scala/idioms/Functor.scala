@@ -11,7 +11,9 @@ class FunctorT[F[_], G[_]](f: Functor[F], g: Functor[G]) extends Functor[({type 
   def map[A, B](h: A ⇒ B) = f map (g map h)
 }
 
-object Functor {
+object Functor extends FunctorInstances
+
+trait FunctorInstances {
   implicit def tupleL[T] = new Functor[({type λ[α] = (T, α)})#λ] {
     def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
   }
