@@ -9,6 +9,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Options" should "work" in {
     idiom[Option] {
+      $(42) should equal (Some(42))
       $(Some("abc") + "d") should equal (Some("abcd"))
       $((None: Option[Int]) * 2) should equal (None)
       $(Some(5) * Some(3)) should equal (Some(15))
@@ -18,6 +19,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Lists" should "work" in {
     idiom[List] {
+      $(42) should equal (List(42))
       $(List(1, 2, 3) + 1) should equal (List(2, 3, 4))
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
@@ -25,6 +27,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Sets" should "work" in {
     idiom[Set] {
+      $(42) should equal (Set(42))
       $(Set(1, 2, 3) * 2) should equal (Set(2, 4, 6))
       $(Set(1, 2, 4) * Set(1, 2, 4)) should equal (Set(1, 2, 4, 8, 16))
     }
@@ -32,6 +35,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Tries" should "work" in {
     idiom[Try] {
+      $(42) should equal (Try(42))
       $(Try(10) * Try(4)) should equal (Success(40))
       val failure = Try(1 / 0)
       $(failure + 5) should equal (failure)
@@ -56,6 +60,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Streams" should "work" in {
     idiom[Stream] {
+      $(42) should equal (Stream(42))
       $(Stream(1, 2, 3) + 1) should equal (Stream(2, 3, 4))
       $(Stream("a", "b") + Stream("x", "y")) should equal (Stream("ax", "ay", "bx", "by"))
     }
@@ -75,8 +80,11 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
       val l:  Either[Int, String] = Left(10)
       val l2: Either[String, String] = Left("5")
       val r:  Either[Int, String] = Right("foo")
+      $(42) should equal (Left(42))
+      $(l + 5) should equal (Left(15))
+      $(r - 2) should equal (Right("foo"))
       $(l.toString + l2) should equal (Left("105"))
-      $(l + r)  should equal (Right("foo"))
+      $(l + r) should equal (Right("foo"))
     }
   }
 
@@ -84,9 +92,12 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
     idiom(right[String]) {
       val r:  Either[String, Int] = Right(10)
       val r2: Either[String, Int] = Right(5)
-      val l:  Either[String, Int] = Left("foo")
+      val l:  Either[String, Boolean] = Left("foo")
+      $(42) should equal (Right(42))
+      $(r + 2)  should equal(Right(12))
+      $(l || false) should equal(Left("foo"))
       $(r + r2) should equal (Right(15))
-      $(r + l)  should equal (Left("foo"))
+      $((r > 5) || l)  should equal (Left("foo"))
     }
   }
 
@@ -99,6 +110,9 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Partial functions" should "work" in {
     idiom(partialFunction[Int]) {
+      val justFoo = $("foo")
+      justFoo(42) should equal ("foo")
+
       val foo: PartialFunction[Int, String] = {
         case 1 ⇒ "one"
         case 2 ⇒ "two"
@@ -131,6 +145,9 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
       val weird = $(chars * 2)
       weird("C-3PO") should equal (10)
+
+      val justFive = $(5)
+      justFive("anything") should equal (5)
     }
   }
 
@@ -139,8 +156,14 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
       val append = (s: String) ⇒ (c: Char) ⇒ s + c
       val count  = (s: String) ⇒ (c: Char) ⇒ s.count(_ == c)
 
-      val nonletters = $(append + count.toString)
-      nonletters("R2-D2")('2') should equal ("R2-D222")
+      val foo = $(append + "!")
+      foo("R2-D2")('2') should equal ("R2-D22!")
+
+      val bar = $(append + count.toString)
+      bar("R2-D2")('2') should equal ("R2-D222")
+
+      val justTrue = $(true)
+      justTrue("anything")('X') should equal (true)
     }
   }
 }
