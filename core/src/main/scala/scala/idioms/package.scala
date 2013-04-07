@@ -2,7 +2,8 @@ package scala
 
 import language.experimental.macros
 import language.higherKinds
-import reflect.macros.{TypecheckException, Context}
+
+import reflect.macros.Context
 
 package object idioms {
   def idiom[F[_]](code: _): _ = macro idiomImpl
@@ -80,19 +81,32 @@ package object idioms {
     import c.universe._
 
     val tpe = typeTree.tpe
-    try {
-      val typeref = TypeRef(NoPrefix, typeOf[Idiom[Any]].typeSymbol, List(tpe))
-      val instance = c.inferImplicitValue(typeref, silent=false)
 
-      val map  = Select(instance, TermName("map"))
-      val pure = Select(instance, TermName("pure"))
-      val app  = Select(instance, TermName("app"))
+    val functorTypeRef = TypeRef(NoPrefix, typeOf[Functor[Any]].typeSymbol, List(tpe))
+    val functorInstance = c.inferImplicitValue(functorTypeRef)
 
-      IdiomaticContext(tpe, map, Some(pure), Some(app))
-    } catch {
-      case e: TypecheckException ⇒
-        c.abort(typeTree.pos, s"Unable to find $tpe instance in implicit scope")
+    if (functorInstance == EmptyTree)
+      c.abort(typeTree.pos, s"Unable to find $functorTypeRef instance in implicit scope")
+
+    val map = Select(functorInstance, TermName("map"))
+
+    val pure = {
+      val pointedTypeRef = TypeRef(NoPrefix, typeOf[Pointed[Any]].typeSymbol, List(tpe))
+      val pointedInstance = c.inferImplicitValue(pointedTypeRef)
+
+      if (pointedInstance == EmptyTree) None
+      else Some(Select(pointedInstance, TermName("pure")))
     }
+
+    val app = {
+      val semiIdiomTypeRef = TypeRef(NoPrefix, typeOf[SemiIdiom[Any]].typeSymbol, List(tpe))
+      val semiIdiomInstance = c.inferImplicitValue(semiIdiomTypeRef)
+
+      if (semiIdiomInstance == EmptyTree) None
+      else Some(Select(semiIdiomInstance, TermName("app")))
+    }
+
+    IdiomaticContext(tpe, map, pure, app)
   }
 
   private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
