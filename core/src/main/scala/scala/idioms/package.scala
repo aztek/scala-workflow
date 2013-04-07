@@ -24,30 +24,49 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
       val Expr(instance) = idiom
 
-      val instanceType = instance.tpe match {
-        case RefinedType(parents, _) ⇒
-          parents find {
-            case TypeRef(_, sym, _) ⇒ sym.fullName == "scala.idioms.Idiom"
-          } getOrElse {
-            c.abort(instance.pos, "Not an idiom")
-          }
-        case tpe @ TypeRef(_, sym, _) if sym.fullName == "scala.idioms.Idiom" ⇒
-          tpe
-        case tpe @ TypeRef(_, sym, _) if sym.fullName == "scala.idioms.IdiomT" ⇒
-          // we know, that IdiomT is a direct ancestor of Idiom,
-          // so simply take the second element of the list
-          tpe.baseType(tpe.baseClasses(1))
+      def constructIdiom(instance: Tree, tpe: Type) = {
+        val pure = Select(instance, TermName("pure"))
+        constructSemiIdiom(instance, tpe).copy(pure = Some(pure))
       }
 
-      instance.setType(instanceType)
+      def constructSemiIdiom(instance: Tree, tpe: Type) = {
+        val app = Select(instance, TermName("app"))
+        constructFunctor(instance, tpe).copy(app = Some(app))
+      }
 
-      val TypeRef(_, _, List(tpe)) = instanceType
+      def constructPointed(instance: Tree, tpe: Type) = {
+        val pure = Select(instance, TermName("pure"))
+        constructFunctor(instance, tpe).copy(pure = Some(pure))
+      }
 
-      val map  = Select(instance, TermName("map"))
-      val pure = Select(instance, TermName("pure"))
-      val app  = Select(instance, TermName("app"))
+      def constructFunctor(instance: Tree, tpe: Type) = {
+        val map = Select(instance, TermName("map"))
+        val TypeRef(_, _, List(typeArg)) = tpe
+        IdiomaticContext(typeArg, map, None, None)
+      }
 
-      c.macroApplication.updateAttachment(IdiomaticContext(tpe, map, Some(pure), Some(app)))
+      def constructIdiomaticContext(tpe: Type): Option[IdiomaticContext] = tpe match {
+        case RefinedType(parents, _) ⇒
+          parents.view.flatMap(constructIdiomaticContext _).headOption
+        case TypeRef(_, sym, _) ⇒
+          PartialFunction.condOpt(sym.fullName) {
+            case "scala.idioms.Functor"  ⇒ constructFunctor(instance, tpe)
+            case "scala.idioms.FunctorT" ⇒ constructFunctor(instance, tpe.baseType(tpe.baseClasses(1)))
+            case "scala.idioms.Pointed"  ⇒ constructPointed(instance, tpe)
+            case "scala.idioms.PointedT" ⇒ constructPointed(instance, tpe.baseType(tpe.baseClasses(1)))
+            case "scala.idioms.SemiIdiom"  ⇒ constructSemiIdiom(instance, tpe)
+            case "scala.idioms.SemiIdiomT" ⇒ constructSemiIdiom(instance, tpe.baseType(tpe.baseClasses(1)))
+            case "scala.idioms.Idiom"  ⇒ constructIdiom(instance, tpe)
+            case "scala.idioms.IdiomT" ⇒ constructIdiom(instance, tpe.baseType(tpe.baseClasses(1)))
+          }
+        case _ ⇒ None
+      }
+
+      val idiomaticContext = constructIdiomaticContext(instance.tpe) getOrElse {
+        c.abort(instance.pos, "Not an idiom")
+      }
+
+      c.macroApplication.updateAttachment(idiomaticContext)
 
       code
     }
