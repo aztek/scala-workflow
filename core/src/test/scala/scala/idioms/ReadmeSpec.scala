@@ -51,7 +51,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     y should equal (z)
   }
 
-  "Example from 'Idiom transformers'" should "be correct" in {
+  "Example from 'Idioms composition'" should "be correct" in {
     idiom(list $ option) {
       val xs = List(Some(2), Some(3), None)
       $(xs * 10) should equal (List(Some(20), Some(30), None))

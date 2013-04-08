@@ -77,7 +77,7 @@ import scala.idioms.Idiom.list
 idiom[List] {
   $(List(2, 5) * List(3, 7))
 }
-    
+
 idiom(list) {
   $(List(2, 5) * List(3, 7))
 }
@@ -93,12 +93,15 @@ $[List](List(2, 5) * List(3, 7))
 That way, `$` will disregard any enclosing `idiom` block and will work within
 `Idiom[List]` context.
 
-Idiom transformers
+Idioms composition
 ------------------
-Idioms are known to be composable. There's special _idiom transformer_ class
-`IdiomT`, that allows you, having instances of `Idiom[F]` and `Idiom[G]`, to 
-get instance of `Idiom[F[G]]`. You can either create `IdiomT` object directly
-with class constructor, or use `$` method of the class `Idiom`.
+Functors, pointeds, semi-idioms and idioms are all composable. There are
+special _idiom composition_ classes (`FunctorT`, `PointedT`, `SemiIdiomT` and
+`IdiomT` correspondingly) that allow you, say, having instances of `Idiom[F]`
+and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either create
+`IdiomT` object directly with class constructor, or use `$` method of the class
+`Idiom`. You can also combine idioms of different classes with the same syntax,
+the result idiom will be of the same class as the weaker argument.
 
 ```scala
 idiom(list $ option) {
@@ -107,9 +110,9 @@ idiom(list $ option) {
 }
 ```
 
-Currently, you can only build idiom transformers using terms, but not types
-(i.e. that would be really cool to be able to write `idiom[List $ Option]`,
-but that feature is not supported yet).
+Currently, you can only combine idioms using terms, but not types (i.e. that
+would be really cool to be able to write `idiom[List $ Option]`, but that
+feature is not supported yet).
 
 When are idioms useful?
 -----------------------
