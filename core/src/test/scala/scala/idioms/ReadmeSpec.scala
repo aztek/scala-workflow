@@ -14,25 +14,25 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       $(Some(42) + 1) should equal (Some(43))
       $(Some(10) + Some(5) * Some(2)) should equal (Some(20))
     }
+  }
 
-    idiom[List] {
-      $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
-      $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
+  "Examples from 'Idiom hierarchy'" should "be correct" in {
+    val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
+      def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
+      def pure[A](a: ⇒ A) = (0, a)
+      def app[A, B](ff: (Int, A ⇒ B)) = {
+        case (i, a) ⇒
+          val (i2, f) = ff
+          (i + i2, f(a))
+      }
     }
 
-    idiom(zipList) {
-      $(List(1, 2, 3, 4) * List(2, 3, 4)) should equal (List(2, 6, 12))
-    }
-
-    idiom(function[String]) {
-      val chars   = (s: String) ⇒ s.length
-      val letters = (s: String) ⇒ s.count(_.isLetter)
-      val nonletters = $(chars - letters)
-      nonletters("R2-D2") should equal (3)
-    }
-
-    idiom(map[String]) {
-      $(Map("foo" → 10, "bar" → 5) * 2) should equal (Map("foo" → 20, "bar" → 10))
+    idiom(intTuple) {
+      val foo = (42, "foo")
+      val bar = (13, "bar")
+      $(foo + "bar") should equal (42, "foobar")
+      $("qux") should equal (0, "qux")
+      $(foo + bar) should equal (55, "foobar")
     }
   }
 

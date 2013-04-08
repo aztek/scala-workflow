@@ -1,11 +1,11 @@
 Scala idioms
 ============
-`scala-idioms` is a library, that allows you to organize applicative
-computations nicely with the help of enhanced version of _idiom brackets_.
-The main source of inspiration is the paper [Applicative Programming with
-Effects](http://www.soi.city.ac.uk/~ross/papers/Applicative.html) by Conor
-McBride and Ross Paterson. The syntax is somewhat borrowed from [idioms
-notation](http://www.cs.st-andrews.ac.uk/~eb/Idris/donotation.html) of
+`scala-idioms` is a library, that allows you to organize nicely computations
+in the predefined set of computational contexts with the help of enhanced
+version of _idiom brackets_. The main source of inspiration is the paper
+[Applicative Programming with Effects](http://www.soi.city.ac.uk/~ross/papers/Applicative.html)
+by Conor McBride and Ross Paterson. The syntax is somewhat borrowed from
+[idioms notation](http://www.cs.st-andrews.ac.uk/~eb/Idris/donotation.html) of
 [Idris](http://idris-lang.org) programming language.
 
 `scala-idioms` is built around [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
@@ -44,22 +44,190 @@ idiom(map[String]) {
 
 What's an idiom?
 ----------------
-Idiom (also called _applicative functor_) is an algebraic structure with two
-operators `pure` and `app` of certain types. Here's how `Idiom` trait is
-defined in `scala-idioms`.
+Following the original paper, idioms (also called _applicative functors_) are
+algebraic structures with two operators `pure` and `app` of certain types, that
+are actively used in Haskell and other functional programming languages to
+express computations with effects. E.g., `Option` and `List` are examples of
+idioms, representing, correspondingly, flawed and non-deterministic
+computations.
+
+In the same paper, _idiom brackets_ is a fairly trivial syntactic
+transformation, that wraps a function in `pure` call and replace each function
+application with `app` call. That way, only a single function, applied to idiom
+instances, is supposed to be put inside the brackets.
+
+`scala-idioms` tries to bring this notion to Scala with several enhancements.
+
+Idioms hierarchy
+----------------
+Instead of a fixed applicative functor class, `scala-idioms` offers a refined
+hierarchy of contexts, starting with the trait `Functor[F[_]]`.
+
 ```scala
-trait Idiom[F[_]] {
-  def pure[T](t: ⇒ T): F[T]
+trait Functor[F[_]] {
+  def map[A, B](f: A ⇒ B): F[A] ⇒ F[B]
+}
+```
+
+This `map` is the same `map` there is in `List`, `Option` and other standard
+Scala classes. Of course, `scala-idioms` already has `Functor` instance for
+them all. You can define your own instance for, say, tuples of two elements.
+
+```scala
+val intTuple = new Functor[({type λ[α] = (Int, α)})#λ] {
+  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
+}
+```
+
+The hacky thing with `#λ` is called _type lambda_ and is used to define type
+constructor (sadly, you can't just write something like `(Int, _)` in Scala).
+
+That instance now can be used to define _idiomatic context_, i.e. a set of
+rules, that will be applied to change semantics of function application inside
+idiom brackets (that look like `$` macro call). For example,
+
+```scala
+idiom(intTuple) {
+  val foo = (42, "foo")
+  $(foo + "bar")
+}
+```
+
+will produce `(42, "foobar")`. Writing `$((42, "foo") + (13, "bar"))`, however,
+will produce an error, because there's no way for `scala-idioms` to decide,
+what should be done with `42` and `13` (addition, multiplication?).
+
+Say, we want it to be addition. For that, an extention of `Functor`, called
+`SemiIdiom` is needed.
+
+```scala
+trait SemiIdiom[F[_]] extends Functor[F] {
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 }
 ```
 
-Idiom brackets is a notation of the form `$(expression)`, that indicates, that
-`expression` should be evaluated within idiomatic context defined by enclosing
-`idiom` block. That idiomatic context is usually accosiated with some sort of
-_computational effects_, such as computations that may or may not fail
-(`Option`), non-deterministic computations (`List`) or delayed computations
-(`Future`).
+Semi-idiom basically defines a way to `map` with a function of more then one
+argument. Semi-idiom instance for a tuple migth look like
+
+```scala
+val intTuple = new SemiIdiom[({type λ[α] = (Int, α)})#λ] {
+  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
+  def app[A, B](ff: (Int, A ⇒ B)) = {
+    case (i, a) ⇒
+      val (i2, f) = ff
+      (i + i2, f(a))
+  }
+}
+```
+
+So now
+
+```scala
+idiom(intTuple) {
+  val foo = (42, "foo")
+  val bar = (13, "bar")
+  $(foo + bar)
+}
+```
+
+will be `(55, "foobar")`. Neat!
+
+There's silly case, though, where semi-idiom `intTuple` still wouldn't work.
+This one: `$("foo")`. Again, `scala-idioms` has no idea of what should be put
+as the first element of a tuple. There's another extension to `Functor` called
+`Pointed` that is used to tell precisely that.
+
+```scala
+trait Pointed[F[_]] extends Functor[F] {
+  def pure[A](a: ⇒ A): F[A]
+}
+```
+
+Finally, there's `Idiom` trait, that incorporates all the methods from `Functor`,
+`SemiIdiom` and `Pointed`. You can see now, how instances of `Idiom` are the
+most powerful ones — they have no restrictions on the number of idiom values
+inside the brackets.
+
+```scala
+trait Idiom[F[_]] extends SemiIdiom[F] with Pointed[F]
+```
+
+Most built-in instances in `scala-idioms` are `Idiom`s and indeen we can define
+idiom for tuple.
+
+```scala
+val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
+  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
+  def pure[A](a: ⇒ A) = (0, a)
+  def app[A, B](ff: (Int, A ⇒ B)) = {
+    case (i, a) ⇒
+      val (i2, f) = ff
+      (i + i2, f(a))
+  }
+}
+```
+
+Now it can be used everywhere.
+
+```scala
+idiom(intTuple) {
+  val foo = (42, "foo")
+  val bar = (13, "bar")
+  $(foo + "bar") should equal (42, "foobar")
+  $("qux") should equal (0, "qux")
+  $(foo + bar) should equal (55, "foobar")
+}
+```
+
+Note, that refined idiom hierarchy is introduced because not all things, that
+we would like to work with via idiom brackets are applicative functors. You can
+find examples of semi-idioms that are not idioms and fuctors that are not
+semi-idioms in `SemiIdiomInstances` and `FunctorInstances` traits.
+
+How does it work?
+-----------------
+Idiom brackets in `scala-idioms` are more flexible about the structure of the
+expression inside and currently support arbitrarily deeply nested function
+applications. For that, some extra work needs to be done, besides idiom method
+calls generation.
+
+Since we can't just lift function arguments into the idiomatic context, the
+main question is, how to decide which subexpressions should be lifted.
+
+Current implementation uses untyped macros and takes untyped Scala AST as an
+argument. Then we start by eagerly (i.e., starting with the most common)
+typechecking all the subexpressions and find, which of them typechecks
+successfully and the result type corresponds to the type of the idiom.
+
+Consider the example below.
+```scala
+idiom(option) {
+  $(2 * 3 + Some(10) * Some(5))
+}
+```
+
+The whole expression does not typecheck. `2 * 3` typechecks to `Int` and
+therefore doesn't need to be lifted. `Some(10) + Some(5)`, does not typecheck,
+but each of its arguments typechecks to `Option[Int]` (well, technically,
+`Some[Int]`, but we can handle that), so both arguments get lifted.
+
+Generated code will look like this.
+```scala
+option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5))
+```
+
+It is useful to observe, how the number of idiom values inside the brackets
+affects the produced code and sets constrains on the enclosing idiomatic
+context.
+
+- No idiom values inside produce `pure` method call (and therefore require
+  idiomatic context to implement `Pointed`)
+
+- One idiom value inside produces `map` method call (and therefore require
+  idiomatic context to implement `Functor`)
+
+- More than one idiom value produce `map` and `app` methods (and therefore
+  require idiomatic context to implement `SemiIdiom`)
 
 Syntax of idioms
 ----------------
@@ -72,7 +240,7 @@ There are plenty of idiom instances for common data types defined in
 
 The following examples are equivalent.
 ```scala
-import scala.idioms.Idiom.list
+import idioms._
 
 idiom[List] {
   $(List(2, 5) * List(3, 7))
@@ -194,42 +362,6 @@ def eval: Expr ⇒ Env ⇒ Option[Int] =
     case Val(value) ⇒ $(value)
     case Add(x, y) ⇒ $(eval(x) + eval(y))
   }
-```
-
-How does it work?
------------------
-Originally, idiom brackets is a fairly simple syntactic transformation, that
-wraps a function in `pure` call and replace each function application with
-`app` call. That way, only a single function, applied to idiom instances, is
-supposed to be put inside the brackets.
-
-Idiom brackets in `scala-idioms` are more flexible and currently support
-arbitrarily deeply nested function applications. For that, some extra work
-needs to be done, besides `pure` and `app` calls generation.
-
-Since we can't just lift function arguments into the idiomatic context, the
-main question is, how to decide which subexpressions should be lifted.
-
-Current implementation uses untyped macros and takes untyped Scala AST as an
-argument. Then we start by eagerly (i.e., starting with the most common)
-typechecking all the subexpressions and find, which of them typechecks
-successfully and the result type corresponds to the type of the idiom.
-
-Consider the example below.
-```scala
-idiom(option) {
-  $(2 * 3 + Some(10) * Some(5))
-}
-```
-
-The whole expression does not typecheck. `2 * 3` typechecks to `Int` and
-therefore doesn't need to be lifted. `Some(10) + Some(5)`, does not typecheck,
-but each of its arguments typechecks to `Option[Int]` (well, technically,
-`Some[Int]`, but we can handle that), so both arguments get lifted.
-
-Generated code will look like this.
-```scala
-option.app(option.app(option.pure((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2))(Some(10)))(Some(5))
 ```
 
 Contributions
