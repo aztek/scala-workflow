@@ -1,8 +1,8 @@
 Scala idioms
 ============
-`scala-idioms` is a library, that allows you to organize nicely computations
-in the predefined set of computational contexts with the help of enhanced
-version of _idiom brackets_. The main source of inspiration is the paper
+`scala-idioms` allows you to organize computations nicely in the predefined set
+of computational contexts with the help of enhanced version of _idiom brackets_.
+The main source of inspiration is the paper
 [Applicative Programming with Effects](http://www.soi.city.ac.uk/~ross/papers/Applicative.html)
 by Conor McBride and Ross Paterson. The syntax is somewhat borrowed from
 [idioms notation](http://www.cs.st-andrews.ac.uk/~eb/Idris/donotation.html) of
@@ -97,8 +97,8 @@ will produce `(42, "foobar")`. Writing `$((42, "foo") + (13, "bar"))`, however,
 will produce an error, because there's no way for `scala-idioms` to decide,
 what should be done with `42` and `13` (addition, multiplication?).
 
-Say, we want it to be addition. For that, an extention of `Functor`, called
-`SemiIdiom` is needed.
+Say, we want it to be addition. For that, an extention of `Functor[F[_]]`,
+called `SemiIdiom[F[_]]` is needed.
 
 ```scala
 trait SemiIdiom[F[_]] extends Functor[F] {
@@ -132,10 +132,10 @@ idiom(intTuple) {
 
 will be `(55, "foobar")`. Neat!
 
-There's silly case, though, where semi-idiom `intTuple` still wouldn't work.
+But there's one silly case, where semi-idiom `intTuple` still wouldn't work.
 This one: `$("foo")`. Again, `scala-idioms` has no idea of what should be put
-as the first element of a tuple. There's another extension to `Functor` called
-`Pointed` that is used to tell precisely that.
+as the first element of a tuple. There's another extension to `Functor[F[_]]`,
+called `Pointed[F[_]]`, that is used to tell precisely that.
 
 ```scala
 trait Pointed[F[_]] extends Functor[F] {
@@ -143,10 +143,10 @@ trait Pointed[F[_]] extends Functor[F] {
 }
 ```
 
-Finally, there's `Idiom` trait, that incorporates all the methods from `Functor`,
-`SemiIdiom` and `Pointed`. You can see now, how instances of `Idiom` are the
-most powerful ones — they have no restrictions on the number of idiom values
-inside the brackets.
+Finally, there's `Idiom[F[_]]` trait, that incorporates all the methods from
+`Functor[F[_]]`, `SemiIdiom[F[_]]` and `Pointed[F[_]]`. You can see now, how
+instances of `Idiom[F[_]]` are the most powerful ones — they have no
+restrictions on the number of idiom values inside the brackets.
 
 ```scala
 trait Idiom[F[_]] extends SemiIdiom[F] with Pointed[F]
@@ -180,14 +180,14 @@ idiom(intTuple) {
 ```
 
 Note, that refined idiom hierarchy is introduced because not all things, that
-we would like to work with via idiom brackets are applicative functors. You can
+we would like to work with via idiom brackets, are applicative functors. You can
 find examples of semi-idioms that are not idioms and fuctors that are not
 semi-idioms in `SemiIdiomInstances` and `FunctorInstances` traits.
 
 How does it work?
 -----------------
-Idiom brackets in `scala-idioms` are more flexible about the structure of the
-expression inside and currently support arbitrarily deeply nested function
+Idiom brackets in `scala-idioms` are more flexible regarding the structure of
+the expression inside and currently support arbitrarily deeply nested function
 applications. For that, some extra work needs to be done, besides idiom method
 calls generation.
 
@@ -195,11 +195,13 @@ Since we can't just lift function arguments into the idiomatic context, the
 main question is, how to decide which subexpressions should be lifted.
 
 Current implementation uses untyped macros and takes untyped Scala AST as an
-argument. Then we start by eagerly (i.e., starting with the most common)
-typechecking all the subexpressions and find, which of them typechecks
-successfully and the result type corresponds to the type of the idiom.
+argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
+starting with the most common subexpressions) and find, which of them
+typechecks successfully and the result type corresponds to the type of the
+idiom.
 
 Consider the example below.
+
 ```scala
 idiom(option) {
   $(2 * 3 + Some(10) * Some(5))
@@ -212,6 +214,7 @@ but each of its arguments typechecks to `Option[Int]` (well, technically,
 `Some[Int]`, but we can handle that), so both arguments get lifted.
 
 Generated code will look like this.
+
 ```scala
 option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5))
 ```
@@ -233,12 +236,11 @@ Syntax of idioms
 ----------------
 Idiom block is defined with `idiom` macro that either takes an idiom instance
 as an argument, or a type constructor `F[_]`, such that there is some idiom
-instance `Idiom[F]` defined somewhere in the implicits scope.
-
-There are plenty of idiom instances for common data types defined in
-`scala.idioms.Idiom` object.
+instance (`Functor[F]`, `SemiIdiom[F]`, `Pointed[F]` or `Idiom[F]`) defined
+somewhere in the implicits scope.
 
 The following examples are equivalent.
+
 ```scala
 import idioms._
 
@@ -251,9 +253,17 @@ idiom(list) {
 }
 ```
 
+There are plenty of built-in idiom instances in traits `FunctorInstances`,
+`SemiIdiomInstances` and `IdiomInstances`. They are all mixed to the package
+object of `scala.idioms`, so once you have `scala.idioms._` imported, you get
+access to them all. Alternatively, you can import just the macros
+`import idioms.{idiom, $}` and access idiom instances from `Functor`,
+`SemiIdiom` and `Idiom` objects.
+
 Macro `$` takes idiomatic context from the closest `idiom` block.
 Alternatively, you can provide type constructor, whose idiom instance will be
 taken from the implicits scope.
+
 ```scala
 $[List](List(2, 5) * List(3, 7))
 ```
@@ -286,6 +296,7 @@ When are idioms useful?
 -----------------------
 Short answer, they might be a more concise substitute of `for`-expressions.
 Consider the example below, where we parse JSON string to some `Person` object.
+
 ```scala
 def parse(json: Json): Option[Person] =
   for {
@@ -301,6 +312,7 @@ def parse(json: Json): Option[Person] =
 Note, how the syntax gets rather awkward, when we separate pure values from
 values, extracted from idiomatic context. With idiom brackets we can compose
 the same code in almost imperative manner. 
+
 ```scala
 def parse2(json: Json): Option[Person] =
   idiom[Option] {
@@ -333,12 +345,14 @@ case class Add(lhs: Expr, rhs: Expr) extends Expr
 ```
 
 Variables are fetched from the environment of type `Env`.
+
 ```scala
 type Env = Map[String, Int]
 def fetch(x: String)(env: Env): Option[Int] = env.get(x)
 ```
 
 The evaluator itself is a function of type `Expr ⇒ Env ⇒ Option[Int]`.
+
 ```scala
 def eval(expr: Expr)(env: Env): Option[Int] =
   expr match {
@@ -355,6 +369,7 @@ Note, that one have to explicitly pass the environment around and to have
 rather clumsy syntax to compute the addition. This can be simplified, once
 wrapped into the idiom `Env ⇒ Option[_]`, which can either be constructed by
 hand, or composed of `Env ⇒ _` and `Option` idioms.
+
 ```scala
 def eval: Expr ⇒ Env ⇒ Option[Int] =
   idiom (function[Env] $ option) {
