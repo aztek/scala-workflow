@@ -13,6 +13,8 @@ class IdiomT[F[_], G[_]](f: Idiom[F], g: Idiom[G]) extends SemiIdiomT(f, g) with
   def pure[A](a: ⇒ A) = new PointedT(f, g).pure(a)
 }
 
+object Idiom extends IdiomInstances
+
 trait IdiomInstances {
   implicit val option = new Idiom[Option] {
     def pure[A](a: ⇒ A) = Option(a)
