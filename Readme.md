@@ -331,6 +331,7 @@ previous computations and that is something idioms can't do.
 
 Any other interesting examples?
 -------------------------------
+### Evaluator for a language of expressions
 McBride and Patterson's paper describes a simple evaluator for a language of
 expressions. Following that examples, here's how it would look like here.
 
@@ -377,6 +378,60 @@ def eval: Expr ⇒ Env ⇒ Option[Int] =
     case Val(value) ⇒ $(value)
     case Add(x, y) ⇒ $(eval(x) + eval(y))
   }
+```
+
+### Functional reactive programming
+`scala-idioms` can be used as syntactic sugar for external libraries and
+programming paradigms. In this example, a very simple version of [Functional
+reactive programming](http://en.wikipedia.org/wiki/Functional_reactive_programming)
+framework is implemented as `Idiom` instance.
+
+`Cell` trait defines a unit of data, that can be assigned with `:=` and fetched
+with `!`. Cells can depend on each other's values, much like they do in
+spreadsheets.
+
+```scala
+trait Cell[T] {
+  def ! : T
+  def := (value: T) { throw new UnsupportedOperationException }
+}
+```
+
+Idiom instance defines cells, that either contain atomic value that can be
+reassign or dependent cells, that take value of some other cell to
+compute their own (reassigning them doesn't make sense, thus the exception).
+
+```scala
+val frp = new Idiom[Cell] {
+  def pure[A](a: ⇒ A) = new Cell[A] {
+    private var value = a
+    override def := (a: A) { value = a }
+    def ! = value
+  }
+  def map[A, B](f: A ⇒ B) = a ⇒ new Cell[B] {
+    def ! = f(a!)
+  }
+  def app[A, B](f: Cell[A ⇒ B]) = a ⇒ new Cell[B] {
+    def ! = f!(a!)
+  }
+}
+```
+
+With that instance we can organize reactive computations with simple syntax.
+
+```scala
+idiom (frp) {
+  val a = $(10)
+  val b = $(5)
+
+  val c = $(a + b * 2)
+
+  (c!) should equal (20)
+
+  b := 7
+
+  (c!) should equal (24)
+}
 ```
 
 Contributions

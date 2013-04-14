@@ -1,6 +1,7 @@
 package scala.idioms
 
 import language.higherKinds
+import language.postfixOps
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
@@ -33,6 +34,12 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       $(foo + "bar") should equal (42, "foobar")
       $("qux") should equal (0, "qux")
       $(foo + bar) should equal (55, "foobar")
+    }
+  }
+
+  "Example from 'How does it work?' section" should "be correct" in {
+    idiom(option) {
+      $(2 * 3 + Some(10) * Some(5)) should equal (option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5)))
     }
   }
 
@@ -129,9 +136,37 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     eval(testExpr2)(env) should equal (None)
   }
 
-  "Example from 'How does it work?' section" should "be correct" in {
-    idiom(option) {
-      $(2 * 3 + Some(10) * Some(5)) should equal (option.app(option.app(option.pure((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2))(Some(10)))(Some(5)))
+  trait Cell[T] {
+    def ! : T
+    def := (value: T) { throw new UnsupportedOperationException }
+  }
+
+  val frp = new Idiom[Cell] {
+    def pure[A](a: ⇒ A) = new Cell[A] {
+      private var value = a
+      override def := (a: A) { value = a }
+      def ! = value
+    }
+    def map[A, B](f: A ⇒ B) = a ⇒ new Cell[B] {
+      def ! = f(a!)
+    }
+    def app[A, B](f: Cell[A ⇒ B]) = a ⇒ new Cell[B] {
+      def ! = f!(a!)
+    }
+  }
+
+  "FRP example" should "be correct" in {
+    idiom (frp) {
+      val a = $(10)
+      val b = $(5)
+
+      val c = $(a + b * 2)
+
+      (c!) should equal (20)
+
+      b := 7
+
+      (c!) should equal (24)
     }
   }
 }
