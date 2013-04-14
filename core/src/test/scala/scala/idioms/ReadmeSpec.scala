@@ -119,7 +119,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 
   "Idiom eval" should "be correct" in {
     def eval: Expr ⇒ Env ⇒ Option[Int] =
-      idiom (function[Env] $ option) {
+      idiom(function[Env] $ option) {
         case Var(x) ⇒ fetch(x)
         case Val(value) ⇒ $(value)
         case Add(x, y) ⇒ $(eval(x) + eval(y))

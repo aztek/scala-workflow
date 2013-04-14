@@ -372,7 +372,7 @@ hand, or composed of `Env ⇒ _` and `Option` idioms.
 
 ```scala
 def eval: Expr ⇒ Env ⇒ Option[Int] =
-  idiom (function[Env] $ option) {
+  idiom(function[Env] $ option) {
     case Var(x) ⇒ fetch(x)
     case Val(value) ⇒ $(value)
     case Add(x, y) ⇒ $(eval(x) + eval(y))
