@@ -11,6 +11,8 @@ by Conor McBride and Ross Paterson. The syntax is somewhat borrowed from
 `scala-idioms` is built around [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
 
+![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
+
 Quick examples
 --------------
 ```scala
