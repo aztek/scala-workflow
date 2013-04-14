@@ -112,6 +112,16 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
       $((1 + ten) * six)   should equal (Some(66))
       $((1 + ten) * none)  should equal (None)
     }
+
+    it should "lift function itself" in {
+      val f: Option[Int ⇒ Int] = Some(_ + 1)
+      val g: Option[Int ⇒ Int] = None
+
+      $(f(ten))  should equal (Some(11))
+      $(f(none)) should equal (None)
+      $(g(ten))  should equal (None)
+      $(g(none)) should equal (None)
+    }
   }
 
   it should "build idiomatic context from explicitly passed idiom instance" in {
