@@ -12,7 +12,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
 
-    c.macroApplication.updateAttachment(resolveIdiomaticContextByType(c)(typeTree))
+    c.macroApplication.updateAttachment(contextFromType(c)(typeTree))
 
     code
   }
@@ -24,27 +24,27 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
       val Expr(instance) = idiom
 
-      c.macroApplication.updateAttachment(resolveIdiomaticContextByTerm(c)(instance))
+      c.macroApplication.updateAttachment(contextFromTerm(c)(instance))
 
       code
     }
   }
 
-  def $[F[_]](code: _): _ = macro $impl[F]
-  def $impl[F[_]](c: Context)(code: c.Tree): c.Tree = {
+  def $[F[_]](code: _): _ = macro $impl
+  def $impl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
     val Apply(TypeApply(_, List(typeTree: TypeTree)), _) = c.macroApplication
 
     val idiomaticContext = if (typeTree.original != null)
-                             resolveIdiomaticContextByType(c)(typeTree)
+                             contextFromType(c)(typeTree)
                            else
-                             resolveIdiomaticContext(c)
+                             contextFromEnclosingIdiom(c)
 
     expandBrackets(c)(code, idiomaticContext).asInstanceOf[Tree]
   }
 
-  private def resolveIdiomaticContextByType(c: Context)(typeTree: c.Tree) = {
+  private def contextFromType(c: Context)(typeTree: c.Tree) = {
     import c.universe._
 
     val tpe = typeTree.tpe
@@ -76,7 +76,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     IdiomaticContext(tpe, map, pure, app)
   }
 
-  private def resolveIdiomaticContextByTerm(c: Context)(instance: c.Tree) = {
+  private def contextFromTerm(c: Context)(instance: c.Tree) = {
     import c.universe._
 
     def constructIdiom(instance: Tree, tpe: Type) =
@@ -93,19 +93,20 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
       IdiomaticContext(typeArg, q"$instance.map", None, None)
     }
 
-    def constructIdiomaticContext(tpe: Type): Option[IdiomaticContext] = tpe match {
+    def constructIdiomaticContext: Type ⇒ Option[IdiomaticContext] = {
       case RefinedType(parents, _) ⇒
-        parents.view.flatMap(constructIdiomaticContext _).headOption
-      case TypeRef(_, sym, _) ⇒
+        parents.view.flatMap(constructIdiomaticContext(_)).headOption
+      case tpe @ TypeRef(_, sym, _) ⇒
+        def parent(tpe: Type) = tpe.baseType(tpe.baseClasses(1))
         PartialFunction.condOpt(sym.fullName) {
           case "scala.idioms.Functor"  ⇒ constructFunctor(instance, tpe)
-          case "scala.idioms.FunctorT" ⇒ constructFunctor(instance, tpe.baseType(tpe.baseClasses(1)))
+          case "scala.idioms.FunctorT" ⇒ constructFunctor(instance, parent(tpe))
           case "scala.idioms.Pointed"  ⇒ constructPointed(instance, tpe)
-          case "scala.idioms.PointedT" ⇒ constructPointed(instance, tpe.baseType(tpe.baseClasses(1)))
+          case "scala.idioms.PointedT" ⇒ constructPointed(instance, parent(tpe))
           case "scala.idioms.SemiIdiom"  ⇒ constructSemiIdiom(instance, tpe)
-          case "scala.idioms.SemiIdiomT" ⇒ constructSemiIdiom(instance, tpe.baseType(tpe.baseClasses(1)))
+          case "scala.idioms.SemiIdiomT" ⇒ constructSemiIdiom(instance, parent(tpe))
           case "scala.idioms.Idiom"  ⇒ constructIdiom(instance, tpe)
-          case "scala.idioms.IdiomT" ⇒ constructIdiom(instance, tpe.baseType(tpe.baseClasses(1)))
+          case "scala.idioms.IdiomT" ⇒ constructIdiom(instance, parent(tpe))
         }
       case _ ⇒ None
     }
@@ -115,7 +116,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     }
   }
 
-  private def resolveIdiomaticContext(c: Context) = {
+  private def contextFromEnclosingIdiom(c: Context) = {
     val idiomaticContext = for {
       context ← c.openMacros.view
       attachments = context.macroApplication.attachments
@@ -203,7 +204,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     type Binds = List[(TermName, Tree)]
 
-    def extractLambdaBody(code: Tree): (Tree, Binds) = code match {
+    def extractLambdaBody: Tree ⇒ (Tree, Binds) = {
       case expr if isLifted(expr) ⇒
         val name = TermName(c.freshName("arg$"))
         (Ident(name), List(name → expr))
