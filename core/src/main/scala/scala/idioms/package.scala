@@ -55,14 +55,14 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     if (functorInstance == EmptyTree)
       c.abort(typeTree.pos, s"Unable to find $functorTypeRef instance in implicit scope")
 
-    val map = Select(functorInstance, TermName("map"))
+    val map = q"$functorInstance.map"
 
     val pure = {
       val pointedTypeRef = TypeRef(NoPrefix, typeOf[Pointed[Any]].typeSymbol, List(tpe))
       val pointedInstance = c.inferImplicitValue(pointedTypeRef)
 
       if (pointedInstance == EmptyTree) None
-      else Some(Select(pointedInstance, TermName("pure")))
+      else Some(q"$pointedInstance.pure")
     }
 
     val app = {
@@ -70,7 +70,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
       val semiIdiomInstance = c.inferImplicitValue(semiIdiomTypeRef)
 
       if (semiIdiomInstance == EmptyTree) None
-      else Some(Select(semiIdiomInstance, TermName("app")))
+      else Some(q"$semiIdiomInstance.app")
     }
 
     IdiomaticContext(tpe, map, pure, app)
@@ -79,25 +79,18 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
   private def resolveIdiomaticContextByTerm(c: Context)(instance: c.Tree) = {
     import c.universe._
 
-    def constructIdiom(instance: Tree, tpe: Type) = {
-      val pure = Select(instance, TermName("pure"))
-      constructSemiIdiom(instance, tpe).copy(pure = Some(pure))
-    }
+    def constructIdiom(instance: Tree, tpe: Type) =
+      constructSemiIdiom(instance, tpe).copy(pure = Some(q"$instance.pure"))
 
-    def constructSemiIdiom(instance: Tree, tpe: Type) = {
-      val app = Select(instance, TermName("app"))
-      constructFunctor(instance, tpe).copy(app = Some(app))
-    }
+    def constructSemiIdiom(instance: Tree, tpe: Type) =
+      constructFunctor(instance, tpe).copy(app = Some(q"$instance.app"))
 
-    def constructPointed(instance: Tree, tpe: Type) = {
-      val pure = Select(instance, TermName("pure"))
-      constructFunctor(instance, tpe).copy(pure = Some(pure))
-    }
+    def constructPointed(instance: Tree, tpe: Type) =
+      constructFunctor(instance, tpe).copy(pure = Some(q"$instance.pure"))
 
     def constructFunctor(instance: Tree, tpe: Type) = {
-      val map = Select(instance, TermName("map"))
       val TypeRef(_, _, List(typeArg)) = tpe
-      IdiomaticContext(typeArg, map, None, None)
+      IdiomaticContext(typeArg, q"$instance.map", None, None)
     }
 
     def constructIdiomaticContext(tpe: Type): Option[IdiomaticContext] = tpe match {
@@ -140,25 +133,20 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     val IdiomaticContext(idiom: Type, map: Tree, optPure: Option[Tree], optApp: Option[Tree]) = idiomaticContext
 
     def expand(expr: Tree) = {
-      def produceMap(lambda: Tree, map: Tree, arg: Tree) = Apply(Apply(map, List(lambda)), List(arg))
-
-      def producePure(lambda: Tree, pure: Tree) = Apply(pure, List(lambda))
-
-      def produceApp(lambda: Tree, app: Tree, args: List[Tree]) =
-        args.foldLeft(lambda) {
-          (tree, arg) ⇒ Apply(Apply(app, List(tree)), List(arg))
-        }
-
       def produceApplication(lambda: Tree): List[Tree] ⇒ Tree = {
-        case Nil ⇒ optPure match {
-          case Some(pure) ⇒ producePure(lambda, pure)
-          case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointed")
-        }
-        case arg :: Nil ⇒ produceMap(lambda, map, arg)
-        case arg :: restArgs ⇒ optApp match {
-          case Some(app) ⇒ produceApp(produceMap(lambda, map, arg), app, restArgs)
-          case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement SemiIdiom")
-        }
+        case Nil ⇒
+          optPure match {
+            case Some(pure) ⇒ q"$pure($lambda)"
+            case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointed")
+          }
+        case arg :: Nil ⇒ q"$map($lambda)($arg)"
+        case arg :: restArgs ⇒
+          optApp match {
+            case Some(app) ⇒ restArgs.foldLeft(q"$map($lambda)($arg)") {
+              (tree, arg) ⇒ q"$app($tree)($arg)"
+            }
+            case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement SemiIdiom")
+          }
       }
 
       val (lambda, args) = composeLambda(expr)
@@ -201,9 +189,8 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
       val lambda = binds.foldRight(body) {
         (bind, tree) ⇒
           val (name, arg) = bind
-          val skolem = resolveLiftedType(c.typeCheck(arg).tpe)
-          val valdef = ValDef(Modifiers(), name, TypeTree(skolem), EmptyTree)
-          Function(List(valdef), tree)
+          val tpe = TypeTree(resolveLiftedType(c.typeCheck(arg).tpe))
+          q"($name: $tpe) ⇒ $tree"
       }
       val (_, args) = binds.unzip
       (lambda, args)
