@@ -141,9 +141,9 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
             case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointed")
           }
         case arg :: Nil ⇒ q"$map($lambda)($arg)"
-        case arg :: restArgs ⇒
+        case arg :: args ⇒
           optApp match {
-            case Some(app) ⇒ restArgs.foldLeft(q"$map($lambda)($arg)") {
+            case Some(app) ⇒ args.foldLeft(q"$map($lambda)($arg)") {
               (tree, arg) ⇒ q"$app($tree)($arg)"
             }
             case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement SemiIdiom")
@@ -209,14 +209,14 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
         val name = TermName(c.freshName("arg$"))
         (Ident(name), List(name → expr))
 
-      case Apply(expr, args) ⇒
-        val (body, binds) = extractLambdaBody(expr)
-        val (newargs, newbinds) = args.map(extractLambdaBody(_)).unzip
-        (Apply(body, newargs), binds ++ newbinds.flatten)
+      case Apply(fun, args) ⇒
+        val (newfun, binds) = extractLambdaBody(fun)
+        val (newargs, newbinds) = args.map(extractLambdaBody).unzip
+        (Apply(newfun, newargs), binds ++ newbinds.flatten)
 
-      case Select(arg, method) ⇒
-        val (newarg, binds) = extractLambdaBody(arg)
-        (Select(newarg, method), binds)
+      case Select(value, method) ⇒
+        val (newvalue, binds) = extractLambdaBody(value)
+        (Select(newvalue, method), binds)
 
       case expr ⇒
         (expr, Nil)
