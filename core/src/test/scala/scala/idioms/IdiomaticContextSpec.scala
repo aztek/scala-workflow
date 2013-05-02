@@ -122,6 +122,15 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
       $(g(ten))  should equal (None)
       $(g(none)) should equal (None)
     }
+
+    it should "lift block with a single statement" in {
+      $ {
+        ten - (six / 2)
+      } should equal (Some(7))
+      $ {
+        ten - (none / 2)
+      } should equal (None)
+    }
   }
 
   it should "build idiomatic context from explicitly passed idiom instance" in {
