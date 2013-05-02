@@ -207,16 +207,16 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     def extractLambdaBody: Tree ⇒ (Tree, Binds) = {
       case expr if isLifted(expr) ⇒
         val name = TermName(c.freshName("arg$"))
-        (Ident(name), List(name → expr))
+        (q"$name", List(name → expr))
 
-      case Apply(fun, args) ⇒
+      case Apply(fun, args) ⇒ // cant's use quasiquotes here, SI-7400
         val (newfun, binds) = extractLambdaBody(fun)
         val (newargs, newbinds) = args.map(extractLambdaBody).unzip
-        (Apply(newfun, newargs), binds ++ newbinds.flatten)
+        (q"$newfun(..$newargs)", binds ++ newbinds.flatten)
 
-      case Select(value, method) ⇒
+      case q"$value.$method" ⇒
         val (newvalue, binds) = extractLambdaBody(value)
-        (Select(newvalue, method), binds)
+        (q"$newvalue.$method", binds)
 
       case expr ⇒
         (expr, Nil)
