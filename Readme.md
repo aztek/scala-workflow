@@ -436,6 +436,68 @@ idiom (frp) {
 }
 ```
 
+### Point-free notation
+If you're familiar with [SKI-calculus](http://en.wikipedia.org/wiki/SKI_combinator_calculus),
+you might notice, that `function[R]` idiom instance's `pure` and `app` methods
+are in fact `K` and `S` combinators. That means, that you can construct any
+closed lambda-term (in other words, any function) with just those two methods.
+
+For instance, here's how you can define `I`-combinator (the identity function):
+```scala
+// I = S K K
+def id[T] = function[T].app(function[T ⇒ T].pure)(function[T].pure)
+```
+
+Or `B`-combinator (Scala's `Function.compose` method or Haskell's `(.)`):
+```scala
+// B = S (K S) K
+def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].pure(function[C].app[A, B]))(function[C].pure)
+// More consicely with map
+def b[A, B, C] = function[A ⇒ B].map(function[C].app[A, B])(function[C].pure)
+```
+
+Aside from mind-wrenching examples like that, there's actually a useful
+application for this idiom instance — it can be used in point-free notation,
+i.e. for constructing complex functions without specifying function arguments.
+
+Point-free notation support is rather limited in Scala, compared to Haskell,
+but some things still could be done. Here are some examples to get you inspired.
+
+```scala
+idiom(function[Char]) {
+  val isLetter: Char ⇒ Boolean = _.isLetter
+  val isDigit:  Char ⇒ Boolean = _.isDigit
+
+  // Traditionally
+  val isLetterOrDigit = (ch: Char) ⇒ isLetter(ch) || isDigit(ch)
+
+  // Combinatorially
+  val isLetterOrDigit = $(isLetter || isDigit)
+}
+```
+
+Scalas `Function.compose` and `Function.andThen` also come in handy.
+
+```scala
+idiom(function[Double]) {
+  val sqrt: Double ⇒ Double = x ⇒ math.sqrt(x)
+  val sqr:  Double ⇒ Double = x ⇒ x * x
+  val log:  Double ⇒ Double = x ⇒ math.log(x)
+
+  // Traditionally
+  val f = (x: Double) ⇒ sqrt((sqr(x) - 1) / (sqr(x) + 1))
+
+  // Combinatorially
+  val f = sqrt compose $((sqr - 1) / (sqr + 1))
+
+  // Traditionally
+  val g = (x: Double) ⇒ (sqr(log(x)) - 1) / (sqr(log(x)) + 1)
+
+  // Combinatorially
+  val g = log andThen $((sqr - 1) / (sqr + 1))
+}
+```
+
 Contributions
 -------------
 This project is still very experimental and comments and suggestions are highly

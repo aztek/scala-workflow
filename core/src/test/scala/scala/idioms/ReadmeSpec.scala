@@ -169,4 +169,43 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       (c!) should equal (24)
     }
   }
+
+  "Point-free notation examples" should "be correct" in {
+    idiom(function[Char]) {
+      val isLetter: Char ⇒ Boolean = _.isLetter
+      val isDigit:  Char ⇒ Boolean = _.isDigit
+
+      // Traditionally
+      val isLetterOrDigit = (ch: Char) ⇒ isLetter(ch) || isDigit(ch)
+
+      // Combinatorially
+      val isLetterOrDigit2 = $(isLetter || isDigit)
+
+      isLetterOrDigit2('X') should equal (true)
+      isLetterOrDigit2('2') should equal (true)
+      isLetterOrDigit2('-') should equal (false)
+    }
+
+    idiom(function[Double]) {
+      val sqrt: Double ⇒ Double = x ⇒ math.sqrt(x)
+      val sqr:  Double ⇒ Double = x ⇒ x * x
+      val log:  Double ⇒ Double = x ⇒ math.log(x)
+
+      // Traditionally
+      val f = (x: Double) ⇒ sqrt((sqr(x) - 1) / (sqr(x) + 1))
+
+      // Combinatorially
+      val f2 = sqrt compose $((sqr - 1) / (sqr + 1))
+
+      f2(5) should equal (f(5))
+
+      // Traditionally
+      val g = (x: Double) ⇒ (sqr(log(x)) - 1) / (sqr(log(x)) + 1)
+
+      // Combinatorially
+      val g2 = log andThen $((sqr - 1) / (sqr + 1))
+
+      g2(10) should equal (g(10))
+    }
+  }
 }
