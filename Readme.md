@@ -155,7 +155,7 @@ trait Idiom[F[_]] extends SemiIdiom[F] with Pointed[F]
 ```
 
 Most built-in instances in `scala-idioms` are `Idiom`s and indeen we can define
-idiom for tuple.
+idiom for `intTuple`.
 
 ```scala
 val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
@@ -389,7 +389,7 @@ reactive programming](http://en.wikipedia.org/wiki/Functional_reactive_programmi
 framework is implemented as `Idiom` instance.
 
 `Cell` trait defines a unit of data, that can be assigned with `:=` and fetched
-with `!`. Cells can depend on each other's values, much like they do in
+with `!`. Cells can depend on each others values, much like they do in
 spreadsheets.
 
 ```scala
@@ -401,7 +401,7 @@ trait Cell[T] {
 
 Idiom instance defines cells, that either contain atomic value that can be
 reassign or dependent cells, that take value of some other cell to
-compute their own (reassigning them doesn't make sense, thus the exception).
+compute their own (reassigning them doesn't make sense, hence the exception).
 
 ```scala
 val frp = new Idiom[Cell] {
@@ -422,7 +422,7 @@ val frp = new Idiom[Cell] {
 With that instance we can organize reactive computations with simple syntax.
 
 ```scala
-idiom (frp) {
+idiom(frp) {
   val a = $(10)
   val b = $(5)
 
@@ -438,8 +438,8 @@ idiom (frp) {
 
 ### Point-free notation
 If you're familiar with [SKI-calculus](http://en.wikipedia.org/wiki/SKI_combinator_calculus),
-you might notice, that `function[R]` idiom instance's `pure` and `app` methods
-are in fact `K` and `S` combinators. That means, that you can construct any
+you might notice, that `function[R]` idiom instances `pure` and `app` methods
+are in fact `K` and `S` combinators. This means that you can construct any
 closed lambda-term (in other words, any function) with just those two methods.
 
 For instance, here's how you can define `I`-combinator (the identity function):
@@ -448,7 +448,7 @@ For instance, here's how you can define `I`-combinator (the identity function):
 def id[T] = function[T].app(function[T ⇒ T].pure)(function[T].pure)
 ```
 
-Or `B`-combinator (Scala's `Function.compose` method or Haskell's `(.)`):
+Or `B`-combinator (Scalas `Function.compose` method or Haskells `(.)`):
 ```scala
 // B = S (K S) K
 def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].pure(function[C].app[A, B]))(function[C].pure)
