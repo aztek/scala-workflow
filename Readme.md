@@ -438,7 +438,7 @@ idiom(frp) {
 
 ### Point-free notation
 If you're familiar with [SKI-calculus](http://en.wikipedia.org/wiki/SKI_combinator_calculus),
-you might notice, that `function[R]` idiom instances `pure` and `app` methods
+you might notice, that `pure` and `app` methods of `function[R]` idiom instance 
 are in fact `K` and `S` combinators. This means that you can construct any
 closed lambda-term (in other words, any function) with just those two methods.
 
