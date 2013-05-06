@@ -123,6 +123,22 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
       $(g(none)) should equal (None)
     }
 
+    it should "lift object fields" in {
+      case class Employee(name: String, boss: Option[Employee], workPlace: Option[WorkPlace])
+      case class WorkPlace(cubicle: Int)
+
+      val steve = Employee("Steve", None, Some(WorkPlace(100)))
+      val john  = Employee("John", Some(steve), Some(WorkPlace(410)))
+      val bob   = Employee("Bob", Some(steve), None)
+
+      $(steve.workPlace.cubicle + 100) should equal (Some(200))
+      $(bob.workPlace.cubicle   + 100) should equal (None)
+
+      // Will not compile, need monad instance for that
+      // $(john.boss.workPlace.cubicle  + 100) should equal (Some(200))
+      // $(steve.boss.workPlace.cubicle + 100) should equal (None)
+    }
+
     it should "lift block with a single statement" in {
       $ {
         ten - (six / 2)
