@@ -1,4 +1,4 @@
-package scala.idioms
+package scala.workflow
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers

@@ -5,7 +5,7 @@ import language.higherKinds
 
 import reflect.macros.Context
 
-package object idioms extends FunctorInstances with SemiIdiomInstances with IdiomInstances {
+package object workflow extends FunctorInstances with SemiIdiomInstances with IdiomInstances {
   def idiom[F[_]](code: _): _ = macro idiomImpl
   def idiomImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
@@ -61,7 +61,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
   private def contextFromTerm(c: Context)(instance: c.Tree): IdiomaticContext = {
     import c.universe._
 
-    val workflowSymbol = instance.tpe.baseClasses find (_.fullName == "scala.idioms.Workflow") getOrElse {
+    val workflowSymbol = instance.tpe.baseClasses find (_.fullName == "scala.workflow.Workflow") getOrElse {
       c.abort(c.enclosingPosition, "Not a workflow instance")
     }
 
@@ -87,9 +87,9 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     val IdiomaticContext(idiom: Type, instance: Tree) = idiomaticContext
 
-    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Mapping")
-    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Pointing")
-    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Applying")
+    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
+    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
+    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
 
     def expand(expr: Tree) = {
       def produceApplication(lambda: Tree): List[Tree] ⇒ Tree = {
@@ -193,6 +193,6 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
   }
 }
 
-package idioms {
-  private[idioms] case class IdiomaticContext(tpe: Any, instance: Any)
+package workflow {
+  private[workflow] case class IdiomaticContext(tpe: Any, instance: Any)
 }
