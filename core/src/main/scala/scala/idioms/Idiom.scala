@@ -16,6 +16,10 @@ trait Pointing[F[_]] { self: Workflow[F] ⇒
   def point[A](a: ⇒ A): F[A]
 }
 
+trait Binding[F[_]] { self: Workflow[F] ⇒
+  def bind[A, B](f: A ⇒ F[B]): F[A] ⇒ F[B]
+}
+
 trait Functor[F[_]] extends Workflow[F] with Mapping[F] {
   def $ [G[_]](g: Functor[G]) = new FunctorT(this, g)
 }
@@ -33,3 +37,7 @@ trait Idiom[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Poin
 }
 
 object Idiom extends IdiomInstances
+
+trait SemiMonad[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Binding[F]
+
+trait Monad[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Binding[F] with Pointing[F]
