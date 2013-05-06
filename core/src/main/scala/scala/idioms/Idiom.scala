@@ -26,18 +26,18 @@ trait Functor[F[_]] extends Workflow[F] with Mapping[F] {
 
 object Functor extends FunctorInstances
 
-trait SemiIdiom[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] {
+trait SemiIdiom[F[_]] extends Functor[F] with Applying[F] {
   def $ [G[_]](g: SemiIdiom[G]) = new SemiIdiomT(this, g)
 }
 
 object SemiIdiom extends SemiIdiomInstances
 
-trait Idiom[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Pointing[F] {
+trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] {
   def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
 }
 
 object Idiom extends IdiomInstances
 
-trait SemiMonad[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Binding[F]
+trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
 
-trait Monad[F[_]] extends Workflow[F] with Mapping[F] with Applying[F] with Binding[F] with Pointing[F]
+trait Monad[F[_]] extends Idiom[F] with Binding[F]
