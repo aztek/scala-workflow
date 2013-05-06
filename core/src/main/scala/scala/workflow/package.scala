@@ -171,21 +171,19 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     type Bind  = (TermName, Tree)
     type Binds = List[Bind]
 
-    def merge(binds: Binds*) = binds.flatten.distinct.toList
-
     def extractLambdaBody(binds: Binds): Tree ⇒ (Tree, Binds) = {
       case expr if isLifted(expr, binds) ⇒
         val name = TermName(c.freshName("arg$"))
-        (q"$name", (name → expr) :: binds)
+        (q"$name", List(name → expr))
 
       case Apply(fun, args) ⇒ // cant's use quasiquotes here, SI-7400
         val (newfun, funbinds) = extractLambdaBody(binds)(fun)
         val (newargs, argsbinds) = args.map(extractLambdaBody(funbinds)).unzip
-        (q"$newfun(..$newargs)", merge(binds, funbinds, argsbinds.flatten))
+        (q"$newfun(..$newargs)", funbinds ++ argsbinds.flatten)
 
       case q"$value.$method" ⇒
         val (newvalue, valbinds) = extractLambdaBody(binds)(value)
-        (q"$newvalue.$method", merge(valbinds, binds))
+        (q"$newvalue.$method", valbinds)
 
       case expr ⇒
         (expr, Nil)
