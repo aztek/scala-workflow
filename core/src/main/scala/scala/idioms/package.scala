@@ -82,20 +82,26 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
     IdiomaticContext(tpe, map, point, app)
   }
 
-  private def implementsMapping(c: Context)(tpe: c.Type)  = tpe.baseClasses.exists(_.fullName == "scala.idioms.Mapping")
-  private def implementsPointing(c: Context)(tpe: c.Type) = tpe.baseClasses.exists(_.fullName == "scala.idioms.Pointing")
-  private def implementsApplying(c: Context)(tpe: c.Type) = tpe.baseClasses.exists(_.fullName == "scala.idioms.Applying")
+  private def implementsMapping(c: Context)(tpe: c.Type)  = tpe.baseClasses exists (_.fullName == "scala.idioms.Mapping")
+  private def implementsPointing(c: Context)(tpe: c.Type) = tpe.baseClasses exists (_.fullName == "scala.idioms.Pointing")
+  private def implementsApplying(c: Context)(tpe: c.Type) = tpe.baseClasses exists (_.fullName == "scala.idioms.Applying")
 
   private def contextFromTerm(c: Context)(instance: c.Tree): IdiomaticContext = {
     import c.universe._
 
     val tpe = instance.tpe
 
+    val workflowSymbol = tpe.baseClasses find (_.fullName == "scala.idioms.Workflow") getOrElse {
+      c.abort(c.enclosingPosition, "Not a workflow instance")
+    }
+
+    val TypeRef(_, _, List(workflowType)) = tpe.baseType(workflowSymbol)
+
     val map = if (implementsMapping(c)(tpe)) Some(q"$instance.map") else None
     val point = if (implementsPointing(c)(tpe)) Some(q"$instance.point") else None
     val app = if (implementsApplying(c)(tpe)) Some(q"$instance.app") else None
 
-    IdiomaticContext(tpe, map, point, app)
+    IdiomaticContext(workflowType, map, point, app)
   }
 
   private def contextFromEnclosingIdiom(c: Context) = {
@@ -213,9 +219,7 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
         (expr, Nil)
     }
 
-    val z = expand(code)
-    println(z)
-    z
+    expand(code)
   }
 }
 
