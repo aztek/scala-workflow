@@ -36,12 +36,12 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
     val Apply(TypeApply(_, List(typeTree: TypeTree)), _) = c.macroApplication
 
-    val idiomaticContext = if (typeTree.original != null)
-                             contextFromType(c)(typeTree)
-                           else
-                             contextFromEnclosingIdiom(c)
+    val workflowContext = if (typeTree.original != null)
+                            contextFromType(c)(typeTree)
+                          else
+                            contextFromEnclosingIdiom(c)
 
-    expandBrackets(c)(code, idiomaticContext).asInstanceOf[Tree]
+    expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
   }
 
   private def contextFromType(c: Context)(typeTree: c.Tree) = {
@@ -55,10 +55,10 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     if (instance == EmptyTree)
       c.abort(typeTree.pos, s"Unable to find $typeRef instance in implicit scope")
 
-    IdiomaticContext(tpe, instance)
+    WorkflowContext(tpe, instance)
   }
 
-  private def contextFromTerm(c: Context)(instance: c.Tree): IdiomaticContext = {
+  private def contextFromTerm(c: Context)(instance: c.Tree): WorkflowContext = {
     import c.universe._
 
     val workflowSymbol = instance.tpe.baseClasses find (_.fullName == "scala.workflow.Workflow") getOrElse {
@@ -67,25 +67,25 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
     val TypeRef(_, _, List(tpe)) = instance.tpe.baseType(workflowSymbol)
 
-    IdiomaticContext(tpe, instance)
+    WorkflowContext(tpe, instance)
   }
 
   private def contextFromEnclosingIdiom(c: Context) = {
-    val idiomaticContext = for {
+    val workflowContext = for {
       context ← c.openMacros.view
       attachments = context.macroApplication.attachments
-      idiomaticContext ← attachments.get[IdiomaticContext]
-    } yield idiomaticContext
+      workflowContext ← attachments.get[WorkflowContext]
+    } yield workflowContext
 
-    idiomaticContext.headOption getOrElse {
+    workflowContext.headOption getOrElse {
       c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
     }
   }
 
-  private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
+  private def expandBrackets(c: Context)(code: c.Tree, workflowContext: WorkflowContext): c.Tree = {
     import c.universe._
 
-    val IdiomaticContext(idiom: Type, instance: Tree) = idiomaticContext
+    val WorkflowContext(idiom: Type, instance: Tree) = workflowContext
 
     val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
     val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
@@ -194,5 +194,5 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 }
 
 package workflow {
-  private[workflow] case class IdiomaticContext(tpe: Any, instance: Any)
+  private[workflow] case class WorkflowContext(tpe: Any, instance: Any)
 }
