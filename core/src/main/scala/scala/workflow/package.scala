@@ -164,7 +164,14 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       (lambda, args)
     }
 
-    def typeCheck(tree: Tree, binds: Binds) = c.typeCheck(tree.duplicate, silent=true)
+    def typeCheck(tree: Tree, binds: Binds) = {
+      val vals = binds map { case (name, value) ⇒ q"val $name : ${TypeTree(value.tpe)} = ???" }
+      try {
+        c.typeCheck(q"{ ..$vals; ${tree.duplicate} }")
+      } catch {
+        case e: Exception ⇒ EmptyTree
+      }
+    }
 
     def isLifted(tree: Tree, binds: Binds) = typeCheck(tree, binds).tpe.baseClasses contains idiom.typeSymbol
 
