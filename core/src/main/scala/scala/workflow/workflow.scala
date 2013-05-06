@@ -36,8 +36,8 @@ trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] {
   def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
 }
 
-object Idiom extends IdiomInstances
-
 trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
 
 trait Monad[F[_]] extends Idiom[F] with Binding[F]
+
+object Monad extends MonadInstances
