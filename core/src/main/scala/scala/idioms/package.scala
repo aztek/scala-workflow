@@ -49,59 +49,25 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 
     val tpe = typeTree.tpe
 
-    val workflowTypeRef = TypeRef(NoPrefix, typeOf[Workflow[Any]].typeSymbol, List(tpe))
-    val workflowInstance = c.inferImplicitValue(workflowTypeRef)
+    val typeRef = TypeRef(NoPrefix, typeOf[Workflow[Any]].typeSymbol, List(tpe))
+    val instance = c.inferImplicitValue(typeRef)
 
-    if (workflowInstance == EmptyTree)
-      c.abort(typeTree.pos, s"Unable to find $workflowTypeRef instance in implicit scope")
+    if (instance == EmptyTree)
+      c.abort(typeTree.pos, s"Unable to find $typeRef instance in implicit scope")
 
-    val map = {
-      val mappingTypeRef = TypeRef(NoPrefix, typeOf[Mapping[Any]].typeSymbol, List(tpe))
-      val mappingInstance = c.inferImplicitValue(mappingTypeRef)
-
-      if (mappingInstance == EmptyTree) None
-      else Some(q"$mappingInstance.map")
-    }
-
-    val point = {
-      val pointingTypeRef = TypeRef(NoPrefix, typeOf[Pointing[Any]].typeSymbol, List(tpe))
-      val pointingInstance = c.inferImplicitValue(pointingTypeRef)
-
-      if (pointingInstance == EmptyTree) None
-      else Some(q"$pointingInstance.point")
-    }
-
-    val app = {
-      val applyingTypeRef = TypeRef(NoPrefix, typeOf[Applying[Any]].typeSymbol, List(tpe))
-      val applyingInstance = c.inferImplicitValue(applyingTypeRef)
-
-      if (applyingInstance == EmptyTree) None
-      else Some(q"$applyingInstance.app")
-    }
-
-    IdiomaticContext(tpe, map, point, app)
+    IdiomaticContext(tpe, instance)
   }
-
-  private def implementsMapping(c: Context)(tpe: c.Type)  = tpe.baseClasses exists (_.fullName == "scala.idioms.Mapping")
-  private def implementsPointing(c: Context)(tpe: c.Type) = tpe.baseClasses exists (_.fullName == "scala.idioms.Pointing")
-  private def implementsApplying(c: Context)(tpe: c.Type) = tpe.baseClasses exists (_.fullName == "scala.idioms.Applying")
 
   private def contextFromTerm(c: Context)(instance: c.Tree): IdiomaticContext = {
     import c.universe._
 
-    val tpe = instance.tpe
-
-    val workflowSymbol = tpe.baseClasses find (_.fullName == "scala.idioms.Workflow") getOrElse {
+    val workflowSymbol = instance.tpe.baseClasses find (_.fullName == "scala.idioms.Workflow") getOrElse {
       c.abort(c.enclosingPosition, "Not a workflow instance")
     }
 
-    val TypeRef(_, _, List(workflowType)) = tpe.baseType(workflowSymbol)
+    val TypeRef(_, _, List(tpe)) = instance.tpe.baseType(workflowSymbol)
 
-    val map = if (implementsMapping(c)(tpe)) Some(q"$instance.map") else None
-    val point = if (implementsPointing(c)(tpe)) Some(q"$instance.point") else None
-    val app = if (implementsApplying(c)(tpe)) Some(q"$instance.app") else None
-
-    IdiomaticContext(workflowType, map, point, app)
+    IdiomaticContext(tpe, instance)
   }
 
   private def contextFromEnclosingIdiom(c: Context) = {
@@ -119,31 +85,35 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
   private def expandBrackets(c: Context)(code: c.Tree, idiomaticContext: IdiomaticContext): c.Tree = {
     import c.universe._
 
-    val IdiomaticContext(idiom: Type, optMap: Option[Tree], optPoint: Option[Tree], optApp: Option[Tree]) = idiomaticContext
+    val IdiomaticContext(idiom: Type, instance: Tree) = idiomaticContext
+
+    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Mapping")
+    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Pointing")
+    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.idioms.Applying")
 
     def expand(expr: Tree) = {
       def produceApplication(lambda: Tree): List[Tree] ⇒ Tree = {
         case Nil ⇒
-          optPoint match {
-            case Some(point) ⇒ q"$point($lambda)"
-            case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointing")
-          }
+          if (!implementsPointing)
+            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointing")
+
+          q"$instance.point($lambda)"
+
         case arg :: Nil ⇒
-          optMap match {
-            case Some(map) ⇒ q"$map($lambda)($arg)"
-            case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
-          }
+          if (!implementsMapping)
+            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
+
+          q"$instance.map($lambda)($arg)"
+
         case arg :: args ⇒
-          optApp match {
-            case Some(app) ⇒
-              optMap match {
-                case Some(map) ⇒
-                  args.foldLeft(q"$map($lambda)($arg)") {
-                    (tree, arg) ⇒ q"$app($tree)($arg)"
-                  }
-                case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
-              }
-            case None ⇒ c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement SemiIdiom")
+          if (!implementsApplying)
+            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Applying")
+
+          if (!implementsMapping)
+            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
+
+          args.foldLeft(q"$instance.map($lambda)($arg)") {
+            (tree, arg) ⇒ q"$instance.app($tree)($arg)"
           }
       }
 
@@ -224,5 +194,5 @@ package object idioms extends FunctorInstances with SemiIdiomInstances with Idio
 }
 
 package idioms {
-  private[idioms] case class IdiomaticContext(tpe: Any, map: Option[Any], point: Option[Any], app: Option[Any])
+  private[idioms] case class IdiomaticContext(tpe: Any, instance: Any)
 }
