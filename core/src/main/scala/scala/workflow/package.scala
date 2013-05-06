@@ -153,7 +153,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     }
 
     def composeLambda(code: Tree) = {
-      val (body, binds) = extractLambdaBody(code)
+      val (body, binds) = extractLambdaBody(List.empty[Bind])(code)
       val lambda = binds.foldRight(body) {
         (bind, tree) ⇒
           val (name, arg) = bind
@@ -164,26 +164,28 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       (lambda, args)
     }
 
-    def isLifted(arg: Tree) = {
-      val baseClasses = c.typeCheck(arg.duplicate, silent=true).tpe.baseClasses
-      baseClasses contains idiom.typeSymbol
-    }
+    def typeCheck(tree: Tree, binds: Binds) = c.typeCheck(tree.duplicate, silent=true)
 
-    type Binds = List[(TermName, Tree)]
+    def isLifted(tree: Tree, binds: Binds) = typeCheck(tree, binds).tpe.baseClasses contains idiom.typeSymbol
 
-    def extractLambdaBody: Tree ⇒ (Tree, Binds) = {
-      case expr if isLifted(expr) ⇒
+    type Bind  = (TermName, Tree)
+    type Binds = List[Bind]
+
+    def merge(binds: Binds*) = binds.flatten.distinct.toList
+
+    def extractLambdaBody(binds: Binds): Tree ⇒ (Tree, Binds) = {
+      case expr if isLifted(expr, binds) ⇒
         val name = TermName(c.freshName("arg$"))
-        (q"$name", List(name → expr))
+        (q"$name", (name → expr) :: binds)
 
       case Apply(fun, args) ⇒ // cant's use quasiquotes here, SI-7400
-        val (newfun, binds) = extractLambdaBody(fun)
-        val (newargs, newbinds) = args.map(extractLambdaBody).unzip
-        (q"$newfun(..$newargs)", binds ++ newbinds.flatten)
+        val (newfun, funbinds) = extractLambdaBody(binds)(fun)
+        val (newargs, argsbinds) = args.map(extractLambdaBody(funbinds)).unzip
+        (q"$newfun(..$newargs)", merge(binds, funbinds, argsbinds.flatten))
 
       case q"$value.$method" ⇒
-        val (newvalue, binds) = extractLambdaBody(value)
-        (q"$newvalue.$method", binds)
+        val (newvalue, valbinds) = extractLambdaBody(binds)(value)
+        (q"$newvalue.$method", merge(valbinds, binds))
 
       case expr ⇒
         (expr, Nil)
