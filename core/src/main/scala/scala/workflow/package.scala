@@ -170,7 +170,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
             val newvals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
             Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
           } catch {
-            case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
+            case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
             case e: Exception ⇒ None
           }
         case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
