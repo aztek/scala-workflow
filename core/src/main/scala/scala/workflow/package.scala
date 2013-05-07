@@ -165,12 +165,20 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
             case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
             case e: Exception ⇒ None
           }
+        case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
+          try {
+            val newvals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
+            Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
+          } catch {
+            case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
+            case e: Exception ⇒ None
+          }
         case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
         case e: Exception ⇒ None
       }
     }
 
-    def isLifted: Type ⇒ Boolean = _.baseClasses contains idiom.typeSymbol
+    def isLifted(tpe: Type) = tpe.baseClasses contains idiom.typeSymbol
 
     type Bind  = (TermName, Type, Tree)
     type Binds = List[Bind]
