@@ -3,7 +3,7 @@ package scala
 import language.experimental.macros
 import language.higherKinds
 
-import reflect.macros.Context
+import scala.reflect.macros.{TypecheckException, Context}
 
 package object workflow extends FunctorInstances with SemiIdiomInstances with MonadInstances {
   def idiom[F[_]](code: _): _ = macro idiomImpl
@@ -152,48 +152,74 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       }
     }
 
-    def composeLambda(code: Tree) = {
-      val (body, binds) = extractLambdaBody(List.empty[Bind])(code)
-      val lambda = binds.foldRight(body) {
-        (bind, tree) ⇒
-          val (name, arg) = bind
-          val tpe = TypeTree(resolveLiftedType(c.typeCheck(arg).tpe))
-          q"($name: $tpe) ⇒ $tree"
+    def typeCheck(tree: Tree, binds: Binds): Option[Tree] = {
+      val vals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
+      try {
+        Some(c.typeCheck(q"{ ..$vals; ${tree.duplicate} }"))
+      } catch {
+        case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒
+          try {
+            val newvals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
+            Some(c.typeCheck(q"{ ..$newvals; ${tree.duplicate} _ }"))
+          } catch {
+            case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
+            case e: Exception ⇒ None
+          }
+        case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
+        case e: Exception ⇒ None
       }
-      val (_, args) = binds.unzip
+    }
+
+    def isLifted: Type ⇒ Boolean = _.baseClasses contains idiom.typeSymbol
+
+    type Bind  = (TermName, Type, Tree)
+    type Binds = List[Bind]
+
+    def composeLambda(code: Tree) = {
+      val (body, binds) = rewrite(List.empty[Bind])(code)
+      val lambda = binds.foldLeft(body) {
+        (tree, bind) ⇒
+          val (name, tpe, _) = bind
+          q"($name: ${TypeTree(tpe)}) ⇒ $tree"
+      }
+      val (_, _, args) = binds.reverse.unzip3
       (lambda, args)
     }
 
-    def typeCheck(tree: Tree, binds: Binds) = {
-      val vals = binds map { case (name, value) ⇒ q"val $name : ${TypeTree(value.tpe)} = ???" }
-      try {
-        c.typeCheck(q"{ ..$vals; ${tree.duplicate} }")
-      } catch {
-        case e: Exception ⇒ EmptyTree
-      }
-    }
-
-    def isLifted(tree: Tree, binds: Binds) = typeCheck(tree, binds).tpe.baseClasses contains idiom.typeSymbol
-
-    type Bind  = (TermName, Tree)
-    type Binds = List[Bind]
-
-    def extractLambdaBody(binds: Binds): Tree ⇒ (Tree, Binds) = {
-      case expr if isLifted(expr, binds) ⇒
-        val name = TermName(c.freshName("arg$"))
-        (q"$name", List(name → expr))
-
-      case Apply(fun, args) ⇒ // cant's use quasiquotes here, SI-7400
-        val (newfun, funbinds) = extractLambdaBody(binds)(fun)
+    def rewrite(binds: Binds): Tree ⇒ (Tree, Binds) = {
+      case Apply(fun, args) ⇒
+        val (newfun,  funbinds)  = extractLambdaBody(binds)(fun)
         val (newargs, argsbinds) = args.map(extractLambdaBody(funbinds)).unzip
-        (q"$newfun(..$newargs)", funbinds ++ argsbinds.flatten)
+        extractLambdaBody(argsbinds.flatten.distinct)(q"$newfun(..$newargs)")
 
-      case q"$value.$method" ⇒
-        val (newvalue, valbinds) = extractLambdaBody(binds)(value)
-        (q"$newvalue.$method", valbinds)
+      case Select(value, method) ⇒
+        val (newvalue, newbinds) = extractLambdaBody(binds)(value)
+        extractLambdaBody(newbinds)(q"$newvalue.$method")
+
+      case value @ Literal(_) ⇒
+        extractLambdaBody(binds)(value)
+
+      case ident @ Ident(_) ⇒
+        extractLambdaBody(binds)(ident)
 
       case expr ⇒
-        (expr, Nil)
+        c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
+    }
+
+    def extractLambdaBody(binds: Binds): Tree ⇒ (Tree, Binds) = expr ⇒ {
+      typeCheck(expr, binds) match {
+        case None ⇒
+          rewrite(binds)(expr)
+
+        case Some(typeTree) if isLifted(typeTree.tpe) ⇒
+          val name = TermName(c.freshName("arg$"))
+          val tpe  = resolveLiftedType(typeTree.tpe)
+          val bind = (name, tpe, expr)
+          (q"$name", bind :: binds)
+
+        case _ ⇒
+          (expr, binds)
+      }
     }
 
     expand(code)
