@@ -190,29 +190,24 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       case Apply(fun, args) ⇒
         val (newfun,  funbinds)  = rewrite(binds)(fun)
         val (newargs, argsbinds) = args.map(rewrite(funbinds)).unzip
-        extractLambdaBody(argsbinds.flatten.distinct)(q"$newfun(..$newargs)")
+        extractBinds(argsbinds.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
         val (newvalue, newbinds) = rewrite(binds)(value)
-        extractLambdaBody(newbinds)(q"$newvalue.$method")
+        extractBinds(newbinds, q"$newvalue.$method")
 
-      case value @ Literal(_) ⇒
-        extractLambdaBody(binds)(value)
+      case value @ Literal(_) ⇒ extractBinds(binds, value)
 
-      case ident @ Ident(_) ⇒
-        extractLambdaBody(binds)(ident)
+      case ident @ Ident(_) ⇒ extractBinds(binds, ident)
 
-      case constructor @ New(_) ⇒
-        extractLambdaBody(binds)(constructor)
+      case constructor @ New(_) ⇒ extractBinds(binds, constructor)
 
       case expr ⇒
         c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
     }
 
-    def extractLambdaBody(binds: Binds): Tree ⇒ (Tree, Binds) = expr ⇒ {
+    def extractBinds(binds: Binds, expr: Tree) =
       typeCheck(expr, binds) match {
-        case None ⇒ rewrite(binds)(expr)
-
         case Some(typeTree) ⇒
           resolveLiftedType(typeTree.tpe) match {
             case Some(tpe) ⇒
@@ -220,11 +215,10 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
               val bind = (name, tpe, expr)
               (q"$name", bind :: binds)
 
-            case None ⇒
-              (expr, binds)
+            case None ⇒ (expr, binds)
           }
+        case None ⇒ rewrite(binds)(expr)
       }
-    }
 
     expand(code)
   }
