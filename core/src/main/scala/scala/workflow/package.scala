@@ -91,41 +91,6 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
     val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
 
-    def expand(expr: Tree) = {
-      def produceApplication(body: Tree): Binds ⇒ Tree = {
-        case Nil ⇒
-          if (!implementsPointing)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
-
-          q"$instance.point($body)"
-
-        case (name, tpe, value) :: Nil ⇒
-          if (!implementsMapping)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
-
-          q"$instance.map(($name: $tpe) ⇒ $body)($value)"
-
-        case bind :: binds ⇒
-          if (!implementsApplying)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
-
-          val newbody = binds.foldLeft(body) {
-            (tree, bind) ⇒
-              val (name, tpe, _) = bind
-              q"($name: $tpe) ⇒ $tree"
-          }
-
-          binds.foldRight(produceApplication(newbody)(List(bind))) {
-            (bind, tree) ⇒
-              val (_, _, value) = bind
-              q"$instance.app($tree)($value)"
-          }
-      }
-
-      val (body, binds) = rewrite(List.empty[Bind])(code)
-      produceApplication(body)(binds.reverse)
-    }
-
     def resolveLiftedType(tpe: Type): Option[Type] =
       tpe.baseType(workflow.typeSymbol) match {
         case baseType @ TypeRef(_, _, typeArgs) ⇒
@@ -156,6 +121,9 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case _ ⇒ None
       }
 
+    type Bind  = (TermName, Tree, Tree)
+    type Binds = List[Bind]
+
     def typeCheck(tree: Tree, binds: Binds): Option[Tree] = {
       val vals = binds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
       try {
@@ -175,9 +143,6 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case e: Exception ⇒ None
       }
     }
-
-    type Bind  = (TermName, Tree, Tree)
-    type Binds = List[Bind]
 
     def rewrite(binds: Binds): Tree ⇒ (Tree, Binds) = {
       case Apply(fun, args) ⇒
@@ -213,7 +178,38 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case None ⇒ rewrite(binds)(expr)
       }
 
-    expand(code)
+    def applyRebinds(body: Tree): Binds ⇒ Tree = {
+      case Nil ⇒
+        if (!implementsPointing)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
+
+        q"$instance.point($body)"
+
+      case (name, tpe, value) :: Nil ⇒
+        if (!implementsMapping)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
+
+        q"$instance.map(($name: $tpe) ⇒ $body)($value)"
+
+      case bind :: binds ⇒
+        if (!implementsApplying)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
+
+        val newbody = binds.foldLeft(body) {
+          (tree, bind) ⇒
+            val (name, tpe, _) = bind
+            q"($name: $tpe) ⇒ $tree"
+        }
+
+        binds.foldRight(applyRebinds(newbody)(List(bind))) {
+          (bind, tree) ⇒
+            val (_, _, value) = bind
+            q"$instance.app($tree)($value)"
+        }
+    }
+
+    val (body, binds) = rewrite(List.empty[Bind])(code)
+    applyRebinds(body)(binds.reverse)
   }
 }
 
