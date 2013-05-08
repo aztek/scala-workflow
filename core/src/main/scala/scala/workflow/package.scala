@@ -92,34 +92,38 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
 
     def expand(expr: Tree) = {
-      def produceApplication(lambda: Tree): List[Tree] ⇒ Tree = {
+      def produceApplication(body: Tree): Binds ⇒ Tree = {
         case Nil ⇒
           if (!implementsPointing)
             c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointing")
 
-          q"$instance.point($lambda)"
+          q"$instance.point($body)"
 
-        case arg :: Nil ⇒
+        case (name, tpe, value) :: Nil ⇒
           if (!implementsMapping)
             c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
 
-          q"$instance.map($lambda)($arg)"
+          q"$instance.map(($name: ${TypeTree(tpe)}) ⇒ $body)($value)"
 
-        case arg :: args ⇒
+        case bind :: binds ⇒
           if (!implementsApplying)
             c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Applying")
 
-          if (!implementsMapping)
-            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
+          val newbody = binds.foldLeft(body) {
+            (tree, bind) ⇒
+              val (name, tpe, _) = bind
+              q"($name: ${TypeTree(tpe)}) ⇒ $tree"
+          }
 
-          args.foldLeft(q"$instance.map($lambda)($arg)") {
-            (tree, arg) ⇒ q"$instance.app($tree)($arg)"
+          binds.foldRight(produceApplication(newbody)(List(bind))) {
+            (bind, tree) ⇒
+              val (_, _, value) = bind
+              q"$instance.app($tree)($value)"
           }
       }
 
-      val (lambda, args) = composeLambda(expr)
-
-      produceApplication(lambda)(args)
+      val (body, binds) = rewrite(List.empty[Bind])(code)
+      produceApplication(body)(binds.reverse)
     }
 
     def resolveLiftedType(tpe: Type): Option[Type] =
@@ -174,17 +178,6 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
     type Bind  = (TermName, Type, Tree)
     type Binds = List[Bind]
-
-    def composeLambda(code: Tree) = {
-      val (body, binds) = rewrite(List.empty[Bind])(code)
-      val lambda = binds.foldLeft(body) {
-        (tree, bind) ⇒
-          val (name, tpe, _) = bind
-          q"($name: ${TypeTree(tpe)}) ⇒ $tree"
-      }
-      val (_, _, args) = binds.reverse.unzip3
-      (lambda, args)
-    }
 
     def rewrite(binds: Binds): Tree ⇒ (Tree, Binds) = {
       case Apply(fun, args) ⇒
