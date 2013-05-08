@@ -62,7 +62,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     import c.universe._
 
     val workflowSymbol = instance.tpe.baseClasses find (_.fullName == "scala.workflow.Workflow") getOrElse {
-      c.abort(c.enclosingPosition, "Not a workflow instance")
+      c.abort(instance.pos, "Not a workflow instance")
     }
 
     val TypeRef(_, _, List(tpe)) = instance.tpe.baseType(workflowSymbol)
