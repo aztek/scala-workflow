@@ -5,10 +5,10 @@ import org.scalatest.matchers.ShouldMatchers
 import util.{Success, Try}
 
 class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
-  behavior of "Built-in idiom instances"
+  behavior of "Built-in context instances"
 
   "Options" should "work" in {
-    idiom[Option] {
+    context[Option] {
       val none: Option[Int] = None
       $(42) should equal (Some(42))
       $(Some("abc") + "d") should equal (Some("abcd"))
@@ -19,7 +19,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Lists" should "work" in {
-    idiom[List] {
+    context[List] {
       $(42) should equal (List(42))
       $(List(1, 2, 3) + 1) should equal (List(2, 3, 4))
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
@@ -27,7 +27,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Sets" should "work" in {
-    idiom[Set] {
+    context[Set] {
       $(42) should equal (Set(42))
       $(Set(1, 2, 3) * 2) should equal (Set(2, 4, 6))
       $(Set(1, 2, 4) * Set(1, 2, 4)) should equal (Set(1, 2, 4, 8, 16))
@@ -35,7 +35,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Tries" should "work" in {
-    idiom[Try] {
+    context[Try] {
       $(42) should equal (Try(42))
       $(Try(10) * Try(4)) should equal (Success(40))
       val failure = Try(1 / 0)
@@ -48,7 +48,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
     import concurrent.{Await, Future, TimeoutException}
     import concurrent.ExecutionContext.Implicits.global
     import concurrent.duration._
-    idiom[Future] {
+    context[Future] {
       def slowPlus(x: Int, y: Int) = { Thread.sleep(900); x + y }
       val a = Future(slowPlus(1, 3))
       val b = Future(slowPlus(2, 4))
@@ -60,7 +60,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Streams" should "work" in {
-    idiom[Stream] {
+    context[Stream] {
       $(42) should equal (Stream(42))
       $(Stream(1, 2, 3) + 1) should equal (Stream(2, 3, 4))
       $(Stream("a", "b") + Stream("x", "y")) should equal (Stream("ax", "ay", "bx", "by"))
@@ -68,7 +68,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "ZipStream" should "work" in {
-    idiom(zipStream) {
+    context(zipStream) {
       val a = Stream.from(1)
       $(2).take(5) should equal (Stream(2, 2, 2, 2, 2))
       $(a + 1).take(5) should equal (Stream(2, 3, 4, 5, 6))
@@ -77,7 +77,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Lefts" should "work" in {
-    idiom(left[String]) {
+    context(left[String]) {
       val l:  Either[Int, String] = Left(10)
       val l2: Either[String, String] = Left("5")
       val r:  Either[Int, String] = Right("foo")
@@ -90,7 +90,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Rights" should "work" in {
-    idiom(right[String]) {
+    context(right[String]) {
       val r:  Either[String, Int] = Right(10)
       val r2: Either[String, Int] = Right(5)
       val l:  Either[String, Boolean] = Left("foo")
@@ -104,13 +104,13 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 
   "Ids" should "work" in {
     // it does nothing, actually
-    idiom(id) {
+    context(id) {
       $(1 + 2) should equal (1 + 2)
     }
   }
 
   "Partial functions" should "work" in {
-    idiom(partialFunction[Int]) {
+    context(partialFunction[Int]) {
       val justFoo = $("foo")
       justFoo(42) should equal ("foo")
 
@@ -137,7 +137,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
   }
 
 //  "Functions" should "work" in {
-//    idiom(function[String]) {
+//    context(function[String]) {
 //      val chars   = (s: String) ⇒ s.length
 //      val letters = (s: String) ⇒ s.count(_.isLetter)
 //
@@ -153,7 +153,7 @@ class IdiomInstancesSpec extends FlatSpec with ShouldMatchers {
 //  }
 
   "Functions of two arguments" should "work" in {
-    idiom(function2[String, Char]) {
+    context(function2[String, Char]) {
       val append = (s: String) ⇒ (c: Char) ⇒ s + c
       val count  = (s: String) ⇒ (c: Char) ⇒ s.count(_ == c)
 

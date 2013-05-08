@@ -15,7 +15,7 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
   val foo: Option[String] = Some("foo")
   val snone: Option[String] = None
 
-  idiom[Option] {
+  context[Option] {
     it should "lift object operator application" in {
       $(ten - three)  should equal (Some(7))
       $(three - none) should equal (None)
@@ -149,22 +149,22 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  it should "build idiomatic context from explicitly passed idiom instance" in {
-    idiom(list) {
+  it should "build workflow context from explicitly passed workflow instance" in {
+    context(list) {
       $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
       $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
   }
 
-  it should "resolve idiomatic context from passed idiom type" in {
+  it should "resolve workflow context from passed workflow type" in {
     $[Option](ten - (six / 2)) should equal (Some(7))
-    idiom[Option] {
-      $[List](List(1, 2, 3) * 2) should equal (List(2, 4, 6)) // disregard enclosing idiom block
+    context[Option] {
+      $[List](List(1, 2, 3) * 2) should equal (List(2, 4, 6)) // disregard enclosing context block
     }
   }
 
-  it should "build idiomatic context for idioms composition" in {
-    idiom(list $ option) {
+  it should "build workflow context for workflows composition" in {
+    context(list $ option) {
       val xs = List(Some(2), Some(3), None)
       val ys = List(None, Some(4), Some(5))
 
@@ -172,7 +172,7 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
       $(xs + ys) should equal (List(None, Some(6), Some(7), None, Some(7), Some(8), None, None, None))
     }
 
-    idiom(list $ option $ option) {
+    context(list $ option $ option) {
       val xs = List(Some(None), Some(Some(2)), None)
       val ys = List(None, Some(None), Some(Some(5)))
 

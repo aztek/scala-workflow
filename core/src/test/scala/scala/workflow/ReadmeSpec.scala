@@ -11,7 +11,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   behavior of "Examples from Readme file"
 
   "Examples from 'Quick examples' section" should "be correct" in {
-    idiom[Option] {
+    context[Option] {
       $(Some(42) + 1) should equal (Some(43))
       $(Some(10) + Some(5) * Some(2)) should equal (Some(20))
     }
@@ -28,7 +28,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       }
     }
 
-    idiom(intTuple) {
+    context(intTuple) {
       val foo = (42, "foo")
       val bar = (13, "bar")
       $(foo + "bar") should equal (42, "foobar")
@@ -38,17 +38,17 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Example from 'How does it work?' section" should "be correct" in {
-    idiom(option) {
+    context(option) {
       $(2 * 3 + Some(10) * Some(5)) should equal (option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5)))
     }
   }
 
 //  "Examples from 'Syntax of idioms'" should "be correct" in {
-//    val x = idiom[List] {
+//    val x = context[List] {
 //      $(List(2, 5) * List(3, 7))
 //    }
 //
-//    val y = idiom(list) {
+//    val y = context(list) {
 //      $(List(2, 5) * List(3, 7))
 //    }
 //
@@ -59,7 +59,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 //  }
 
   "Example from 'Idioms composition'" should "be correct" in {
-    idiom(list $ option) {
+    context(list $ option) {
       val xs = List(Some(2), Some(3), None)
       $(xs * 10) should equal (List(Some(20), Some(30), None))
     }
@@ -87,7 +87,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       }
 
     def parse2(json: Json): Option[Person] =
-      idiom[Option] {
+      context[Option] {
         val id = parseId(json)
         val name = parseName(json)
         val birthday = parseBirthday(json)
@@ -126,7 +126,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 //
 //  "Idiom eval" should "be correct" in {
 //    def eval: Expr ⇒ Env ⇒ Option[Int] =
-//      idiom(function[Env] $ option) {
+//      context(function[Env] $ option) {
 //        case Var(x) ⇒ fetch(x)
 //        case Val(value) ⇒ $(value)
 //        case Add(x, y) ⇒ $(eval(x) + eval(y))
@@ -156,7 +156,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 //  }
 //
 //  "FRP example" should "be correct" in {
-//    idiom (frp) {
+//    context(frp) {
 //      val a = $(10)
 //      val b = $(5)
 //
@@ -171,7 +171,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 //  }
 
   "Point-free notation examples" should "be correct" in {
-    idiom(function[Char]) {
+    context(function[Char]) {
       val isLetter: Char ⇒ Boolean = _.isLetter
       val isDigit:  Char ⇒ Boolean = _.isDigit
 
@@ -186,7 +186,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       isLetterOrDigit2('-') should equal (false)
     }
 
-//    idiom(function[Double]) {
+//    context(function[Double]) {
 //      val sqrt: Double ⇒ Double = x ⇒ math.sqrt(x)
 //      val sqr:  Double ⇒ Double = x ⇒ x * x
 //      val log:  Double ⇒ Double = x ⇒ math.log(x)

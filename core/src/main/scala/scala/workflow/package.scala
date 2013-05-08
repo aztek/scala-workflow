@@ -6,8 +6,8 @@ import language.higherKinds
 import scala.reflect.macros.{TypecheckException, Context}
 
 package object workflow extends FunctorInstances with SemiIdiomInstances with MonadInstances {
-  def idiom[F[_]](code: _): _ = macro idiomImpl
-  def idiomImpl(c: Context)(code: c.Tree): c.Tree = {
+  def context[F[_]](code: _): _ = macro contextImpl
+  def contextImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
 
     val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
@@ -17,12 +17,12 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     code
   }
 
-  object idiom {
-    def apply(idiom: Any)(code: _): _ = macro idiomImpl
-    def idiomImpl(c: Context)(idiom: c.Expr[Any])(code: c.Tree): c.Tree = {
+  object context {
+    def apply(workflow: Any)(code: _): _ = macro contextImpl
+    def contextImpl(c: Context)(workflow: c.Expr[Any])(code: c.Tree): c.Tree = {
       import c.universe._
 
-      val Expr(instance) = idiom
+      val Expr(instance) = workflow
 
       c.macroApplication.updateAttachment(contextFromTerm(c)(instance))
 
@@ -78,7 +78,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     } yield workflowContext
 
     workflowContext.headOption getOrElse {
-      c.abort(c.enclosingPosition, "Idiom brackets outside of idiom block")
+      c.abort(c.enclosingPosition, "Workflow brackets outside of `context' block")
     }
   }
 
