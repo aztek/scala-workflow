@@ -117,18 +117,18 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case _ ⇒ None
       }
 
-    type Bind  = (TermName, Tree, Tree)
-    type Binds = List[Bind]
+    type Rebind  = (TermName, Tree, Tree)
+    type Rebinds = List[Rebind]
 
-    def typeCheck(tree: Tree, binds: Binds): Option[Tree] = {
-      val vals = binds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
+    def typeCheck(tree: Tree, rebinds: Rebinds): Option[Tree] = {
+      val vals = rebinds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
       try {
         Some(c.typeCheck(q"{ ..$vals; ${tree.duplicate} }"))
       } catch {
         case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒ Some(EmptyTree)
         case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
           try {
-            val newvals = binds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
+            val newvals = rebinds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
             Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
           } catch {
             case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
@@ -140,45 +140,45 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       }
     }
 
-    def rewrite(binds: Binds): Tree ⇒ (Tree, Binds) = {
+    def rewrite(rebinds: Rebinds): Tree ⇒ (Tree, Rebinds) = {
       case Apply(fun, args) ⇒
-        val (newfun,  funbinds)  = rewrite(binds)(fun)
-        val (newargs, argsbinds) = args.map(rewrite(funbinds)).unzip
-        extractBinds(argsbinds.flatten.distinct, q"$newfun(..$newargs)")
+        val (newfun,  funrebinds)  = rewrite(rebinds)(fun)
+        val (newargs, argsrebinds) = args.map(rewrite(funrebinds)).unzip
+        extractBinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
-        val (newvalue, newbinds) = rewrite(binds)(value)
-        extractBinds(newbinds, q"$newvalue.$method")
+        val (newvalue, newrebinds) = rewrite(rebinds)(value)
+        extractBinds(newrebinds, q"$newvalue.$method")
 
-      case value @ Literal(_) ⇒ extractBinds(binds, value)
+      case value @ Literal(_) ⇒ extractBinds(rebinds, value)
 
-      case ident @ Ident(_) ⇒ extractBinds(binds, ident)
+      case ident @ Ident(_) ⇒ extractBinds(rebinds, ident)
 
-      case constructor @ New(_) ⇒ extractBinds(binds, constructor)
+      case constructor @ New(_) ⇒ extractBinds(rebinds, constructor)
 
       case expr ⇒
         c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
     }
 
-    def extractBinds(binds: Binds, expr: Tree) =
-      typeCheck(expr, binds) match {
+    def extractBinds(rebinds: Rebinds, expr: Tree) =
+      typeCheck(expr, rebinds) match {
         case Some(typeTree) ⇒
           resolveLiftedType(typeTree.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
-              val bind = (name, TypeTree(tpe), expr)
-              (q"$name", bind :: binds)
+              val rebind = (name, TypeTree(tpe), expr)
+              (q"$name", rebind :: rebinds)
 
-            case None ⇒ (expr, binds)
+            case None ⇒ (expr, rebinds)
           }
-        case None ⇒ rewrite(binds)(expr)
+        case None ⇒ rewrite(rebinds)(expr)
       }
 
     val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
     val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
     val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
 
-    def applyRebinds(body: Tree): Binds ⇒ Tree = {
+    def applyRebinds(body: Tree): Rebinds ⇒ Tree = {
       case Nil ⇒
         if (!implementsPointing)
           c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
@@ -191,25 +191,25 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
         q"$instance.map(($name: $tpe) ⇒ $body)($value)"
 
-      case bind :: binds ⇒
+      case rebind :: rebinds ⇒
         if (!implementsApplying)
           c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
 
-        val newbody = binds.foldLeft(body) {
-          (tree, bind) ⇒
-            val (name, tpe, _) = bind
+        val newbody = rebinds.foldLeft(body) {
+          (tree, rebind) ⇒
+            val (name, tpe, _) = rebind
             q"($name: $tpe) ⇒ $tree"
         }
 
-        binds.foldRight(applyRebinds(newbody)(List(bind))) {
-          (bind, tree) ⇒
-            val (_, _, value) = bind
+        rebinds.foldRight(applyRebinds(newbody)(List(rebind))) {
+          (rebind, tree) ⇒
+            val (_, _, value) = rebind
             q"$instance.app($tree)($value)"
         }
     }
 
-    val (body, binds) = rewrite(List.empty[Bind])(code)
-    applyRebinds(body)(binds.reverse)
+    val (body, rebinds) = rewrite(List.empty[Rebind])(code)
+    applyRebinds(body)(rebinds.reverse)
   }
 }
 
