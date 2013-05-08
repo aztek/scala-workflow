@@ -117,7 +117,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case _ ⇒ None
       }
 
-    type Rebind  = (TermName, Tree, Tree)
+    type Rebind  = (TermName, TypeTree, Tree)
     type Rebinds = List[Rebind]
 
     def typeCheck(tree: Tree, rebinds: Rebinds): Option[Tree] = {
