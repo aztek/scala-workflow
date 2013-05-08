@@ -103,7 +103,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           if (!implementsMapping)
             c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
 
-          q"$instance.map(($name: ${TypeTree(tpe)}) ⇒ $body)($value)"
+          q"$instance.map(($name: $tpe) ⇒ $body)($value)"
 
         case bind :: binds ⇒
           if (!implementsApplying)
@@ -112,7 +112,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           val newbody = binds.foldLeft(body) {
             (tree, bind) ⇒
               val (name, tpe, _) = bind
-              q"($name: ${TypeTree(tpe)}) ⇒ $tree"
+              q"($name: $tpe) ⇒ $tree"
           }
 
           binds.foldRight(produceApplication(newbody)(List(bind))) {
@@ -157,14 +157,14 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       }
 
     def typeCheck(tree: Tree, binds: Binds): Option[Tree] = {
-      val vals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
+      val vals = binds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
       try {
         Some(c.typeCheck(q"{ ..$vals; ${tree.duplicate} }"))
       } catch {
         case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒ Some(EmptyTree)
         case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
           try {
-            val newvals = binds map { case (name, tpe, _) ⇒ q"val $name : ${TypeTree(tpe).duplicate} = ???" }
+            val newvals = binds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
             Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
           } catch {
             case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
@@ -176,7 +176,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       }
     }
 
-    type Bind  = (TermName, Type, Tree)
+    type Bind  = (TermName, Tree, Tree)
     type Binds = List[Bind]
 
     def rewrite(binds: Binds): Tree ⇒ (Tree, Binds) = {
@@ -205,7 +205,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           resolveLiftedType(typeTree.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
-              val bind = (name, tpe, expr)
+              val bind = (name, TypeTree(tpe), expr)
               (q"$name", bind :: binds)
 
             case None ⇒ (expr, binds)
