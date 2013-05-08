@@ -87,10 +87,6 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
     val WorkflowContext(workflow: Type, instance: Tree) = workflowContext
 
-    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
-    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
-    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
-
     def resolveLiftedType(tpe: Type): Option[Type] =
       tpe.baseType(workflow.typeSymbol) match {
         case baseType @ TypeRef(_, _, typeArgs) ⇒
@@ -177,6 +173,10 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           }
         case None ⇒ rewrite(binds)(expr)
       }
+
+    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
+    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
+    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
 
     def applyRebinds(body: Tree): Binds ⇒ Tree = {
       case Nil ⇒
