@@ -85,7 +85,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
   private def expandBrackets(c: Context)(code: c.Tree, workflowContext: WorkflowContext): c.Tree = {
     import c.universe._
 
-    val WorkflowContext(idiom: Type, instance: Tree) = workflowContext
+    val WorkflowContext(workflow: Type, instance: Tree) = workflowContext
 
     val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
     val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
@@ -95,19 +95,19 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       def produceApplication(body: Tree): Binds ⇒ Tree = {
         case Nil ⇒
           if (!implementsPointing)
-            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Pointing")
+            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
 
           q"$instance.point($body)"
 
         case (name, tpe, value) :: Nil ⇒
           if (!implementsMapping)
-            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Mapping")
+            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
 
           q"$instance.map(($name: $tpe) ⇒ $body)($value)"
 
         case bind :: binds ⇒
           if (!implementsApplying)
-            c.abort(c.enclosingPosition, s"Enclosing idiom for type $idiom does not implement Applying")
+            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
 
           val newbody = binds.foldLeft(body) {
             (tree, bind) ⇒
@@ -127,11 +127,11 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     }
 
     def resolveLiftedType(tpe: Type): Option[Type] =
-      tpe.baseType(idiom.typeSymbol) match {
+      tpe.baseType(workflow.typeSymbol) match {
         case baseType @ TypeRef(_, _, typeArgs) ⇒
-          idiom match {
+          workflow match {
             case PolyType(List(wildcard), typeRef: TypeRef) ⇒
-              // When idiom is passed as type lambda, we need to take the type
+              // When workflow is passed as type lambda, we need to take the type
               // from wildcard position, so we zip through both typerefs to seek for a substitution
               def findSubstitution(wildcardedType: Type, concreteType: Type): Option[Type] = {
                 if (wildcardedType.typeSymbol == wildcard)
