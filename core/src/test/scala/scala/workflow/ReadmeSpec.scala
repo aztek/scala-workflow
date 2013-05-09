@@ -19,7 +19,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 
   "Examples from 'Idiom hierarchy'" should "be correct" in {
     val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
-      def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
       def point[A](a: ⇒ A) = (0, a)
       def app[A, B](ff: (Int, A ⇒ B)) = {
         case (i, a) ⇒
@@ -146,9 +145,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 //      private var value = a
 //      override def := (a: A) { value = a }
 //      def ! = value
-//    }
-//    def map[A, B](f: A ⇒ B) = a ⇒ new Cell[B] {
-//      def ! = f(a!)
 //    }
 //    def app[A, B](f: Cell[A ⇒ B]) = a ⇒ new Cell[B] {
 //      def ! = f!(a!)

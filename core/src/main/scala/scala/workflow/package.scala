@@ -5,7 +5,7 @@ import language.higherKinds
 
 import scala.reflect.macros.{TypecheckException, Context}
 
-package object workflow extends FunctorInstances with SemiIdiomInstances with MonadInstances {
+package object workflow extends FunctorInstances with SemiIdiomInstances with IdiomInstances with MonadInstances {
   def context[F[_]](code: _): _ = macro contextImpl
   def contextImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._

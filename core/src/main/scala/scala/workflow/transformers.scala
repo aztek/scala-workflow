@@ -13,6 +13,5 @@ class SemiIdiomT[F[_], G[_]](f: SemiIdiom[F], g: SemiIdiom[G]) extends SemiIdiom
 
 class IdiomT[F[_], G[_]](f: Idiom[F], g: Idiom[G]) extends Idiom[({type λ[α] = F[G[α]]})#λ] {
   def point[A](a: ⇒ A) = f.point(g.point(a))
-  def map[A, B](h: A ⇒ B) = f map (g map h)
   def app[A, B](h: F[G[A ⇒ B]]) = f app (f map (g.app[A, B] _))(h)
 }

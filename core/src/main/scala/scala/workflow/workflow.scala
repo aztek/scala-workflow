@@ -33,11 +33,17 @@ trait SemiIdiom[F[_]] extends Functor[F] with Applying[F] {
 object SemiIdiom extends SemiIdiomInstances
 
 trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] {
+  def map[A, B](f: A ⇒ B) = app(point(f))
+
   def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
 }
 
+object Idiom extends IdiomInstances
+
 trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
 
-trait Monad[F[_]] extends Idiom[F] with Binding[F]
+trait Monad[F[_]] extends Idiom[F] with Binding[F] {
+  def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B] = bind(a ⇒ bind((g: A ⇒ B) ⇒ point(g(a)))(f))
+}
 
 object Monad extends MonadInstances
