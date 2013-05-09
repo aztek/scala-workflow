@@ -144,7 +144,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       case Apply(fun, args) ⇒
         val (newfun,  funrebinds)  = rewrite(rebinds)(fun)
         val (newargs, argsrebinds) = args.map(rewrite(funrebinds)).unzip
-        extractBinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
+        extractBinds(argsrebinds.reverse.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
         val (newvalue, newrebinds) = rewrite(rebinds)(value)
@@ -167,7 +167,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
               val rebind = (name, TypeTree(tpe), expr)
-              (q"$name", rebind :: rebinds)
+              (q"$name", rebinds :+ rebind)
 
             case None ⇒ (expr, rebinds)
           }
@@ -177,39 +177,44 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
     val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
     val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
+    val implementsBinding  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Binding")
 
-    def applyRebinds(body: Tree): Rebinds ⇒ Tree = {
-      case Nil ⇒
-        if (!implementsPointing)
-          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
+    def lambda: Rebind ⇒ Tree ⇒ Tree = {
+      case (name, tpe, _) ⇒
+        tree ⇒ q"($name: $tpe) ⇒ $tree"
+    }
 
-        q"$instance.point($body)"
+    def point: Tree ⇒ Tree = {
+      if (!implementsPointing)
+        c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
+      tree ⇒ q"$instance.point($tree)"
+    }
 
-      case (name, tpe, value) :: Nil ⇒
+    def map: Rebind ⇒ Tree ⇒ Tree = {
+      case (_, _, value) ⇒
         if (!implementsMapping)
           c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
+        tree ⇒ q"$instance.map($tree)($value)"
+    }
 
-        q"$instance.map(($name: $tpe) ⇒ $body)($value)"
-
-      case rebind :: rebinds ⇒
+    def app: Rebind ⇒ Tree ⇒ Tree = {
+      case (_, _, value) ⇒
         if (!implementsApplying)
           c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
+        tree ⇒ q"$instance.app($tree)($value)"
+    }
 
-        val newbody = rebinds.foldLeft(body) {
-          (tree, rebind) ⇒
-            val (name, tpe, _) = rebind
-            q"($name: $tpe) ⇒ $tree"
-        }
-
-        rebinds.foldRight(applyRebinds(newbody)(List(rebind))) {
-          (rebind, tree) ⇒
-            val (_, _, value) = rebind
-            q"$instance.app($tree)($value)"
-        }
+    def applyRebinds: Rebinds ⇒ Tree ⇒ Tree = {
+      case Nil ⇒ point
+      case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
+      case rebind :: rebinds ⇒
+        val abstraction = rebinds map lambda reduce (_ compose _)
+        val application = rebinds.reverse map app reduce (_ compose _)
+        application compose map(rebind) compose lambda(rebind) compose abstraction
     }
 
     val (body, rebinds) = rewrite(List.empty[Rebind])(code)
-    applyRebinds(body)(rebinds.reverse)
+    applyRebinds(rebinds)(body)
   }
 }
 
