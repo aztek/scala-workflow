@@ -3,8 +3,8 @@ package scala.workflow
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
-class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
-  behavior of "Idiom"
+class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
+  behavior of "Workflow context"
 
   val ten:   Option[Int] = Some(10)
   val three: Option[Int] = Some(3)
