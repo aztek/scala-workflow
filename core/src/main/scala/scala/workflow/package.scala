@@ -117,18 +117,20 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         case _ ⇒ None
       }
 
-    type Rebind  = (TermName, TypeTree, Tree)
+    case class Rebind(name: TermName, tpe: TypeTree, value: Tree) {
+      def isUsedIn(rebinds: Rebinds) = rebinds exists (_.value exists (_ equalsStructure q"$name"))
+    }
     type Rebinds = List[Rebind]
 
     def typeCheck(tree: Tree, rebinds: Rebinds): Option[Tree] = {
-      val vals = rebinds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
+      val vals = rebinds map (rebind ⇒ q"val ${rebind.name}: ${rebind.tpe} = ???")
       try {
         Some(c.typeCheck(q"{ ..$vals; ${tree.duplicate} }"))
       } catch {
         case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒ Some(EmptyTree)
         case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
           try {
-            val newvals = rebinds map { case (name, tpe, _) ⇒ q"val $name: $tpe = ???" }
+            val newvals = rebinds map (rebind ⇒ q"val ${rebind.name}: ${rebind.tpe} = ???")
             Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
           } catch {
             case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
@@ -166,7 +168,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           resolveLiftedType(typeTree.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
-              val rebind = (name, TypeTree(tpe), expr)
+              val rebind = Rebind(name, TypeTree(tpe), expr)
               (rebind :: rebinds, q"$name")
 
             case None ⇒ (rebinds, expr)
@@ -180,9 +182,8 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     val implementsBinding  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Binding")
 
     def apply: Rebinds ⇒ Tree ⇒ Tree = {
-      def lambda: Rebind ⇒ Tree ⇒ Tree = {
-        case (name, tpe, _) ⇒
-          expr ⇒ q"($name: $tpe) ⇒ $expr"
+      def lambda(rebind: Rebind): Tree ⇒ Tree = {
+        expr ⇒ q"(${rebind.name}: ${rebind.tpe}) ⇒ $expr"
       }
 
       def point: Tree ⇒ Tree = {
@@ -191,31 +192,32 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
         expr ⇒ q"$instance.point($expr)"
       }
 
-      def map: Rebind ⇒ Tree ⇒ Tree = {
-        case (_, _, value) ⇒
-          if (!implementsMapping)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
-          expr ⇒ q"$instance.map($expr)($value)"
+      def map(rebind: Rebind): Tree ⇒ Tree = {
+        if (!implementsMapping)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
+        expr ⇒ q"$instance.map($expr)(${rebind.value})"
       }
 
-      def app: Rebind ⇒ Tree ⇒ Tree = {
-        case (_, _, value) ⇒
-          if (!implementsApplying)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
-          expr ⇒ q"$instance.app($expr)($value)"
+      def app(rebind: Rebind): Tree ⇒ Tree = {
+        if (!implementsApplying)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
+        expr ⇒ q"$instance.app($expr)(${rebind.value})"
       }
 
-      def bind: Rebind ⇒ Tree ⇒ Tree = {
-        case (_, _, value) ⇒
-          if (!implementsBinding)
-            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Binding")
-          expr ⇒ q"$instance.bind($expr)($value)"
+      def bind(rebind: Rebind): Tree ⇒ Tree = {
+        if (!implementsBinding)
+          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Binding")
+        expr ⇒ q"$instance.bind($expr)(${rebind.value})"
       }
 
       {
         case Nil ⇒ point
         case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
-        case rebind :: rebinds ⇒ app(rebind) compose apply(rebinds) compose lambda(rebind)
+        case rebind :: rebinds ⇒
+          if (rebind isUsedIn rebinds)
+            bind(rebind) compose lambda(rebind) compose apply(rebinds)
+          else
+            app(rebind) compose apply(rebinds) compose lambda(rebind)
       }
     }
 
