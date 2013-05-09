@@ -144,7 +144,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
       case Apply(fun, args) ⇒
         val (funrebinds,  newfun)  = rewrite(rebinds)(fun)
         val (argsrebinds, newargs) = args.map(rewrite(funrebinds)).unzip
-        extractBinds(argsrebinds.reverse.flatten.distinct, q"$newfun(..$newargs)")
+        extractBinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
         val (newrebinds, newvalue) = rewrite(rebinds)(value)
@@ -167,7 +167,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
               val rebind = (name, TypeTree(tpe), expr)
-              (rebinds :+ rebind, q"$name")
+              (rebind :: rebinds, q"$name")
 
             case None ⇒ (rebinds, expr)
           }
@@ -179,13 +179,11 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
     val implementsBinding  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Binding")
 
-    def applyRebinds(rebinds: Rebinds): Tree ⇒ Tree = {
+    def apply: Rebinds ⇒ Tree ⇒ Tree = {
       def lambda: Rebind ⇒ Tree ⇒ Tree = {
         case (name, tpe, _) ⇒
           expr ⇒ q"($name: $tpe) ⇒ $expr"
       }
-
-      def lambdas: Rebinds ⇒ Tree ⇒ Tree = _ map lambda reduce (_ compose _)
 
       def point: Tree ⇒ Tree = {
         if (!implementsPointing)
@@ -207,8 +205,6 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           expr ⇒ q"$instance.app($expr)($value)"
       }
 
-      def apps: Rebinds ⇒ Tree ⇒ Tree = _ map app reduce (_ compose _)
-
       def bind: Rebind ⇒ Tree ⇒ Tree = {
         case (_, _, value) ⇒
           if (!implementsBinding)
@@ -216,17 +212,15 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
           expr ⇒ q"$instance.bind($expr)($value)"
       }
 
-      def binds: Rebinds ⇒ Tree ⇒ Tree = _ map bind reduce (_ compose _)
-
-      rebinds match {
+      {
         case Nil ⇒ point
         case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
-        case rebind :: rebinds ⇒ apps(rebinds.reverse) compose map(rebind) compose lambdas(rebind :: rebinds)
+        case rebind :: rebinds ⇒ app(rebind) compose apply(rebinds) compose lambda(rebind)
       }
     }
 
     val (rebinds, expr) = rewrite(List.empty[Rebind])(code)
-    applyRebinds(rebinds)(expr)
+    apply(rebinds)(expr)
   }
 }
 
