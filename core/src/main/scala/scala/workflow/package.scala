@@ -146,83 +146,73 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       case Apply(fun, args) ⇒
         val (funrebinds,  newfun)  = rewrite(rebinds)(fun)
         val (argsrebinds, newargs) = args.map(rewrite(funrebinds)).unzip
-        extractBinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
+        extractRebinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
         val (newrebinds, newvalue) = rewrite(rebinds)(value)
-        extractBinds(newrebinds, q"$newvalue.$method")
+        extractRebinds(newrebinds, q"$newvalue.$method")
 
-      case value @ Literal(_) ⇒ extractBinds(rebinds, value)
-
-      case ident @ Ident(_) ⇒ extractBinds(rebinds, ident)
-
-      case constructor @ New(_) ⇒ extractBinds(rebinds, constructor)
+      case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractRebinds(rebinds, expr)
 
       case expr ⇒
         c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
     }
 
-    def extractBinds(rebinds: Rebinds, expr: Tree) =
+    def extractRebinds(rebinds: Rebinds, expr: Tree) =
       typeCheck(expr, rebinds) match {
         case Some(typeTree) ⇒
           resolveLiftedType(typeTree.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
               val rebind = Rebind(name, TypeTree(tpe), expr)
-              (rebind :: rebinds, q"$name")
+              (rebinds :+ rebind, q"$name")
 
             case None ⇒ (rebinds, expr)
           }
         case None ⇒ rewrite(rebinds)(expr)
       }
 
-    val implementsMapping  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Mapping")
-    val implementsPointing = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Pointing")
-    val implementsApplying = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Applying")
-    val implementsBinding  = instance.tpe.baseClasses exists (_.fullName == "scala.workflow.Binding")
+    def lambda(rebind: Rebind): Tree ⇒ Tree = {
+      expr ⇒ q"(${rebind.name}: ${rebind.tpe}) ⇒ $expr"
+    }
+
+    def assertImplements(interface: String) {
+      if (!instance.tpe.baseClasses.exists(_.fullName == interface))
+        c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement $interface")
+    }
+
+    def point: Tree ⇒ Tree = {
+      assertImplements("scala.workflow.Pointing")
+      expr ⇒ q"$instance.point($expr)"
+    }
+
+    def map(rebind: Rebind): Tree ⇒ Tree = {
+      assertImplements("scala.workflow.Mapping")
+      expr ⇒ q"$instance.map($expr)(${rebind.value})"
+    }
+
+    def app(rebind: Rebind): Tree ⇒ Tree = {
+      assertImplements("scala.workflow.Applying")
+      expr ⇒ q"$instance.app($expr)(${rebind.value})"
+    }
+
+    def bind(rebind: Rebind): Tree ⇒ Tree = {
+      assertImplements("scala.workflow.Binding")
+      expr ⇒ q"$instance.bind($expr)(${rebind.value})"
+    }
 
     def apply: Rebinds ⇒ Tree ⇒ Tree = {
-      def lambda(rebind: Rebind): Tree ⇒ Tree = {
-        expr ⇒ q"(${rebind.name}: ${rebind.tpe}) ⇒ $expr"
-      }
-
-      def point: Tree ⇒ Tree = {
-        if (!implementsPointing)
-          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Pointing")
-        expr ⇒ q"$instance.point($expr)"
-      }
-
-      def map(rebind: Rebind): Tree ⇒ Tree = {
-        if (!implementsMapping)
-          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Mapping")
-        expr ⇒ q"$instance.map($expr)(${rebind.value})"
-      }
-
-      def app(rebind: Rebind): Tree ⇒ Tree = {
-        if (!implementsApplying)
-          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Applying")
-        expr ⇒ q"$instance.app($expr)(${rebind.value})"
-      }
-
-      def bind(rebind: Rebind): Tree ⇒ Tree = {
-        if (!implementsBinding)
-          c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Binding")
-        expr ⇒ q"$instance.bind($expr)(${rebind.value})"
-      }
-
-      {
-        case Nil ⇒ point
-        case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
-        case rebind :: rebinds ⇒
-          if (rebind isUsedIn rebinds)
-            bind(rebind) compose lambda(rebind) compose apply(rebinds)
-          else
-            app(rebind) compose apply(rebinds) compose lambda(rebind)
-      }
+      case Nil ⇒ point
+      case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
+      case rebind :: rebinds ⇒
+        if (rebind isUsedIn rebinds)
+          bind(rebind) compose lambda(rebind) compose apply(rebinds)
+        else
+          app(rebind) compose apply(rebinds) compose lambda(rebind)
     }
 
     val (rebinds, expr) = rewrite(List.empty[Rebind])(code)
-    apply(rebinds.reverse)(expr)
+    apply(rebinds)(expr)
   }
 }
 
