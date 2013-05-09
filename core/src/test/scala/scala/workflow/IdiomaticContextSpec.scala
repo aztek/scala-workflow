@@ -134,9 +134,8 @@ class IdiomaticContextSpec extends FlatSpec with ShouldMatchers {
       $(steve.workPlace.cubicle + 100) should equal (Some(200))
       $(bob.workPlace.cubicle   + 100) should equal (None)
 
-      // Will not compile, need monad instance for that
-      // $(john.boss.workPlace.cubicle  + 100) should equal (Some(200))
-      // $(steve.boss.workPlace.cubicle + 100) should equal (None)
+      $(john.boss.workPlace.cubicle  + 100) should equal (Some(200))
+      $(steve.boss.workPlace.cubicle + 100) should equal (None)
     }
 
     it should "lift block with a single statement" in {

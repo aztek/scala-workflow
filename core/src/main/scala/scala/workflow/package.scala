@@ -222,7 +222,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
     }
 
     val (rebinds, expr) = rewrite(List.empty[Rebind])(code)
-    apply(rebinds)(expr)
+    apply(rebinds.reverse)(expr)
   }
 }
 

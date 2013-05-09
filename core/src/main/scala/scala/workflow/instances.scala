@@ -43,42 +43,42 @@ trait MonadInstances {
   implicit val option = new Monad[Option] {
     def point[A](a: ⇒ A) = Option(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: Option[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
+    def app[A, B](ff: Option[A ⇒ B]) = for (a ← _; f ← ff) yield f(a)
     def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
   }
 
   implicit val list = new Monad[List] {
     def point[A](a: ⇒ A) = List(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: List[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
+    def app[A, B](ff: List[A ⇒ B]) = for (a ← _; f ← ff) yield f(a)
     def bind[A, B](f: A ⇒ List[B]) = _ flatMap f
   }
 
   implicit val set = new Monad[Set] {
     def point[A](a: ⇒ A) = Set(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: Set[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
+    def app[A, B](ff: Set[A ⇒ B]) = for (a ← _; f ← ff) yield f(a)
     def bind[A, B](f: A ⇒ Set[B]) = _ flatMap f
   }
 
   implicit val try_ = new Monad[Try] {
     def point[A](a: ⇒ A) = Try(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: Try[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
+    def app[A, B](ff: Try[A ⇒ B]) = for (a ← _; f ← ff) yield f(a)
     def bind[A, B](f: A ⇒ Try[B]) = _ flatMap f
   }
 
   implicit val future = new Monad[Future] {
     def point[A](a: ⇒ A) = Future(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](ff: Future[A ⇒ B]) = for (f ← ff; a ← _) yield f(a)
+    def app[A, B](ff: Future[A ⇒ B]) = for (a ← _; f ← ff) yield f(a)
     def bind[A, B](f: A ⇒ Future[B]) = _ flatMap f
   }
 
   implicit val stream = new Monad[Stream] {
     def point[A](a: ⇒ A) = Stream(a)
     def map[A, B](f: A ⇒ B) = _ map f
-    def app[A, B](fs: Stream[A ⇒ B]) = for (f ← fs; a ← _) yield f(a)
+    def app[A, B](fs: Stream[A ⇒ B]) = for (a ← _; f ← fs) yield f(a)
     def bind[A, B](f: A ⇒ Stream[B]) = _ flatMap f
   }
 
@@ -92,14 +92,14 @@ trait MonadInstances {
   implicit def left[T] = new Monad[({type λ[α] = Either[α, T]})#λ] {
     def point[A](a: ⇒ A) = Left(a)
     def map[A, B](f: A ⇒ B) = _.left map f
-    def app[A, B](ef: Either[A ⇒ B, T]) = ea ⇒ for (f ← ef.left; a ← ea.left) yield f(a)
+    def app[A, B](ef: Either[A ⇒ B, T]) = ea ⇒ for (a ← ea.left; f ← ef.left) yield f(a)
     def bind[A, B](f: A ⇒ Either[B, T]) = _.left flatMap f
   }
 
   implicit def right[T] = new Monad[({type λ[α] = Either[T, α]})#λ] {
     def point[A](a: ⇒ A) = Right(a)
     def map[A, B](f: A ⇒ B) = _.right map f
-    def app[A, B](ef: Either[T, A ⇒ B]) = ea ⇒ for (f ← ef.right; a ← ea.right) yield f(a)
+    def app[A, B](ef: Either[T, A ⇒ B]) = ea ⇒ for (a ← ea.right; f ← ef.right) yield f(a)
     def bind[A, B](f: A ⇒ Either[T, B]) = _.right flatMap f
   }
 
