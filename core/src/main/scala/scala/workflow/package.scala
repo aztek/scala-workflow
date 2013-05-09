@@ -209,6 +209,15 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Mo
 
       def apps: Rebinds ⇒ Tree ⇒ Tree = _ map app reduce (_ compose _)
 
+      def bind: Rebind ⇒ Tree ⇒ Tree = {
+        case (_, _, value) ⇒
+          if (!implementsBinding)
+            c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement Binding")
+          expr ⇒ q"$instance.bind($expr)($value)"
+      }
+
+      def binds: Rebinds ⇒ Tree ⇒ Tree = _ map bind reduce (_ compose _)
+
       rebinds match {
         case Nil ⇒ point
         case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
