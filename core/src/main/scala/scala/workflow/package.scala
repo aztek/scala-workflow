@@ -117,7 +117,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         case _ ⇒ None
       }
 
-    case class Rebind(name: TermName, tpt: TypeTree, value: Tree) {
+    case class Rebind(name: TermName, tpt: TypeTree, value: Tree, isLocal: Boolean) {
       def isUsedIn(rebinds: Rebinds) = rebinds exists (_.value exists (_ equalsStructure q"$name"))
     }
     type Rebinds = List[Rebind]
@@ -152,6 +152,19 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         val (newrebinds, newvalue) = rewrite(rebinds)(value)
         extractRebinds(newrebinds, q"$newvalue.$method")
 
+      case ValDef(NoMods, name, tpt, expr) ⇒
+        val (newrebinds, newexpr) = rewrite(rebinds)(expr)
+        val tpe = typeCheck(newexpr, newrebinds).get.tpe
+        val newrebind = Rebind(name, TypeTree(tpe), newexpr, isLocal=true)
+        (newrebinds :+ newrebind, q"val $name: $tpt = $newexpr")
+
+      case Block(stat :: stats, expr) ⇒
+        val (statrebinds, newstat) = rewrite(rebinds)(stat)
+        val (newrebinds, newblock) = rewrite(statrebinds)(q"{ ..$stats; $expr }")
+        (newrebinds filterNot (_.isLocal), q"{ $newstat; $newblock }")
+
+      case Block(Nil, expr) ⇒ rewrite(rebinds)(expr)
+
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractRebinds(rebinds, expr)
 
       case expr ⇒
@@ -164,7 +177,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
           resolveLiftedType(tpt.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
-              val rebind = Rebind(name, TypeTree(tpe), expr)
+              val rebind = Rebind(name, TypeTree(tpe), expr, isLocal=false)
               (rebinds :+ rebind, q"$name")
 
             case None ⇒ (rebinds, expr)

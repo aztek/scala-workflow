@@ -153,6 +153,15 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
       } should equal (None)
     }
 
+    it should "monadically lift block with several valdefs" in {
+      $ {
+        val a = six
+        val b = a - four
+        val c = ten / b
+        15 / c
+      } should equal (three)
+    }
+
     it should "monadically lift dependent subexpression" in {
       def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
       $(divide(divide(four, one), divide(ten,  five))) should equal (two)
