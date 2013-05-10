@@ -141,20 +141,20 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         case _ ⇒ None
       }
 
-    case class Rebind(name: TermName, tpt: TypeTree, value: Tree, isLocal: Boolean) {
-      def isUsedIn(rebinds: Rebinds) = rebinds exists (_.value exists (_ equalsStructure q"$name"))
+    case class Bind(name: TermName, tpt: TypeTree, value: Tree, isLocal: Boolean) {
+      def isUsedIn(rebinds: Scope) = rebinds exists (_.value exists (_ equalsStructure q"$name"))
     }
-    type Rebinds = List[Rebind]
+    type Scope = List[Bind]
 
-    def typeCheck(tree: Tree, rebinds: Rebinds): Option[Tree] = {
-      val vals = rebinds map (rebind ⇒ q"val ${rebind.name}: ${rebind.tpt} = ???")
+    def typeCheck(tree: Tree, scope: Scope): Option[Tree] = {
+      val vals = scope map (bind ⇒ q"val ${bind.name}: ${bind.tpt} = ???")
       try {
         Some(c.typeCheck(q"{ ..$vals; ${tree.duplicate} }"))
       } catch {
         case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒ Some(EmptyTree)
         case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
           try {
-            val newvals = rebinds map (rebind ⇒ q"val ${rebind.name}: ${rebind.tpt} = ???")
+            val newvals = scope map (bind ⇒ q"val ${bind.name}: ${bind.tpt} = ???")
             Some(c.typeCheck(q"{ ..$newvals; (${tree.duplicate})(_) }"))
           } catch {
             case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
@@ -166,51 +166,51 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       }
     }
 
-    def rewrite(rebinds: Rebinds): Tree ⇒ (Rebinds, Tree) = {
+    def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case Apply(fun, args) ⇒
-        val (funrebinds,  newfun)  = rewrite(rebinds)(fun)
-        val (argsrebinds, newargs) = args.map(rewrite(funrebinds)).unzip
-        extractRebinds(argsrebinds.flatten.distinct, q"$newfun(..$newargs)")
+        val (funscope,   newfun)  = rewrite(scope)(fun)
+        val (argsscopes, newargs) = args.map(rewrite(funscope)).unzip
+        extractBinds(argsscopes.flatten.distinct, q"$newfun(..$newargs)")
 
       case Select(value, method) ⇒
-        val (newrebinds, newvalue) = rewrite(rebinds)(value)
-        extractRebinds(newrebinds, q"$newvalue.$method")
+        val (newscope, newvalue) = rewrite(scope)(value)
+        extractBinds(newscope, q"$newvalue.$method")
 
       case ValDef(NoMods, name, tpt, expr) ⇒
-        val (newrebinds, newexpr) = rewrite(rebinds)(expr)
-        val tpe = typeCheck(newexpr, newrebinds).get.tpe
-        val newrebind = Rebind(name, TypeTree(tpe), newexpr, isLocal=true)
-        (newrebinds :+ newrebind, q"val $name: $tpt = $newexpr")
+        val (newscope, newexpr) = rewrite(scope)(expr)
+        val tpe = typeCheck(newexpr, newscope).get.tpe
+        val newbind = Bind(name, TypeTree(tpe), newexpr, isLocal=true)
+        (newscope :+ newbind, q"val $name: $tpt = $newexpr")
 
       case Block(stat :: stats, expr) ⇒
-        val (statrebinds, newstat) = rewrite(rebinds)(stat)
-        val (newrebinds, newblock) = rewrite(statrebinds)(q"{ ..$stats; $expr }")
-        (newrebinds filterNot (_.isLocal), q"{ $newstat; $newblock }")
+        val (statscope, newstat)  = rewrite(scope)(stat)
+        val (newscope,  newblock) = rewrite(statscope)(q"{ ..$stats; $expr }")
+        (newscope filterNot (_.isLocal), q"{ $newstat; $newblock }")
 
-      case Block(Nil, expr) ⇒ rewrite(rebinds)(expr)
+      case Block(Nil, expr) ⇒ rewrite(scope)(expr)
 
-      case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractRebinds(rebinds, expr)
+      case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 
       case expr ⇒
         c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
     }
 
-    def extractRebinds(rebinds: Rebinds, expr: Tree) =
-      typeCheck(expr, rebinds) match {
+    def extractBinds(scope: Scope, expr: Tree) =
+      typeCheck(expr, scope) match {
         case Some(tpt) ⇒
           resolveLiftedType(tpt.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
-              val rebind = Rebind(name, TypeTree(tpe), expr, isLocal=false)
-              (rebinds :+ rebind, q"$name")
+              val bind = Bind(name, TypeTree(tpe), expr, isLocal=false)
+              (scope :+ bind, q"$name")
 
-            case None ⇒ (rebinds, expr)
+            case None ⇒ (scope, expr)
           }
-        case None ⇒ rewrite(rebinds)(expr)
+        case None ⇒ rewrite(scope)(expr)
       }
 
-    def lambda(rebind: Rebind): Tree ⇒ Tree = {
-      expr ⇒ q"(${rebind.name}: ${rebind.tpt}) ⇒ $expr"
+    def lambda(bind: Bind): Tree ⇒ Tree = {
+      expr ⇒ q"(${bind.name}: ${bind.tpt}) ⇒ $expr"
     }
 
     val interfaces = instance.tpe.baseClasses map (_.fullName)
@@ -224,33 +224,33 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       expr ⇒ q"$instance.point($expr)"
     }
 
-    def map(rebind: Rebind): Tree ⇒ Tree = {
+    def map(bind: Bind): Tree ⇒ Tree = {
       assertImplements("scala.workflow.Mapping")
-      expr ⇒ q"$instance.map($expr)(${rebind.value})"
+      expr ⇒ q"$instance.map($expr)(${bind.value})"
     }
 
-    def app(rebind: Rebind): Tree ⇒ Tree = {
+    def app(bind: Bind): Tree ⇒ Tree = {
       assertImplements("scala.workflow.Applying")
-      expr ⇒ q"$instance.app($expr)(${rebind.value})"
+      expr ⇒ q"$instance.app($expr)(${bind.value})"
     }
 
-    def bind(rebind: Rebind): Tree ⇒ Tree = {
+    def >>=(bind: Bind): Tree ⇒ Tree = {
       assertImplements("scala.workflow.Binding")
-      expr ⇒ q"$instance.bind($expr)(${rebind.value})"
+      expr ⇒ q"$instance.bind($expr)(${bind.value})"
     }
 
-    def apply: Rebinds ⇒ Tree ⇒ Tree = {
+    def apply: Scope ⇒ Tree ⇒ Tree = {
       case Nil ⇒ point
-      case rebind :: Nil ⇒ map(rebind) compose lambda(rebind)
-      case rebind :: rebinds ⇒
-        if (rebind isUsedIn rebinds)
-          bind(rebind) compose lambda(rebind) compose apply(rebinds)
+      case bind :: Nil ⇒ map(bind) compose lambda(bind)
+      case bind :: binds ⇒
+        if (bind isUsedIn binds)
+          >>=(bind) compose lambda(bind) compose apply(binds)
         else
-          app(rebind) compose apply(rebinds) compose lambda(rebind)
+          app(bind) compose apply(binds) compose lambda(bind)
     }
 
-    val (rebinds, expr) = rewrite(List.empty[Rebind])(code)
-    apply(rebinds)(expr)
+    val (binds, expr) = rewrite(List.empty[Bind])(code)
+    apply(binds)(expr)
   }
 }
 
