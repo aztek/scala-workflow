@@ -30,6 +30,30 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
     }
   }
 
+  def workflow[F[_]](code: _): _ = macro workflowImpl
+  def workflowImpl(c: Context)(code: c.Tree): c.Tree = {
+    import c.universe._
+
+    val Apply(TypeApply(_, List(typeTree)), _) = c.macroApplication
+
+    val workflowContext = contextFromType(c)(typeTree)
+
+    expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
+  }
+
+  object workflow {
+    def apply(workflow: Any)(code: _): _ = macro workflowImpl
+    def workflowImpl(c: Context)(workflow: c.Expr[Any])(code: c.Tree): c.Tree = {
+      import c.universe._
+
+      val Expr(instance) = workflow
+
+      val workflowContext = contextFromTerm(c)(instance)
+
+      expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
+    }
+  }
+
   def $[F[_]](code: _): _ = macro $impl
   def $impl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._
