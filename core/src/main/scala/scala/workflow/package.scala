@@ -38,7 +38,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
     val workflowContext = contextFromType(c)(typeTree)
 
-    expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
+    rewrite(c)(code, workflowContext).asInstanceOf[Tree]
   }
 
   object workflow {
@@ -50,7 +50,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
       val workflowContext = contextFromTerm(c)(instance)
 
-      expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
+      rewrite(c)(code, workflowContext).asInstanceOf[Tree]
     }
   }
 
@@ -65,7 +65,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
                           else
                             contextFromEnclosingIdiom(c)
 
-    expandBrackets(c)(code, workflowContext).asInstanceOf[Tree]
+    rewrite(c)(code, workflowContext).asInstanceOf[Tree]
   }
 
   private def contextFromType(c: Context)(typeTree: c.Tree) = {
@@ -106,7 +106,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
     }
   }
 
-  private def expandBrackets(c: Context)(code: c.Tree, workflowContext: WorkflowContext): c.Tree = {
+  private def rewrite(c: Context)(code: c.Tree, workflowContext: WorkflowContext): c.Tree = {
     import c.universe._
 
     val WorkflowContext(workflow: Type, instance: Tree) = workflowContext
