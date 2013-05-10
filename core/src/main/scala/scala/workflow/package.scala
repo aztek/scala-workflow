@@ -176,8 +176,9 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       expr ⇒ q"(${rebind.name}: ${rebind.tpt}) ⇒ $expr"
     }
 
+    val interfaces = instance.tpe.baseClasses map (_.fullName)
     def assertImplements(interface: String) {
-      if (!instance.tpe.baseClasses.exists(_.fullName == interface))
+      if (!interfaces.contains(interface))
         c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement $interface")
     }
 
