@@ -200,7 +200,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
       case Block(stat :: stats, expr) ⇒
         val (statscope, newstat)  = rewrite(scope.enter)(stat)
-        val (newscope,  newblock) = rewrite(statscope)(q"{ ..$stats; $expr }")
+        val (newscope,  newblock) = rewrite(statscope.enter)(q"{ ..$stats; $expr }")
         (newscope.leave, q"{ $newstat; $newblock }")
 
       case Block(Nil, expr) ⇒ rewrite(scope)(expr)
