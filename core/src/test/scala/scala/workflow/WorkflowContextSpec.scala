@@ -200,4 +200,16 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
       $(xs * ys) should equal (List(None, Some(None), Some(None), None, Some(None), Some(ten), None, None, None))
     }
   }
+
+  it should "lift nested blocks with nested scopes" in {
+    workflow[Option] {
+      val a = ten
+      val b = {
+        val a = six
+        val b = four
+        a - b
+      }
+      a / b
+    } should equal (five)
+  }
 }
