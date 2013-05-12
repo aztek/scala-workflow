@@ -157,8 +157,9 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       def merge(scopes: List[Scope]) = {
         val materialized = scopes map (_.materialized)
         val frames = scopes map (_.frames)
-        new Scope(materialized.flatten.distinct, frames.flatten.distinct)
+        new Scope(materialized.flatten.distinct, mergeFrames(frames))
       }
+      private def mergeFrames(frames: List[List[Frame]]) = frames.map(_.head).flatten.distinct :: frames.head.tail
     }
 
     def typeCheck(tree: Tree, scope: Scope): Option[Tree] = {
