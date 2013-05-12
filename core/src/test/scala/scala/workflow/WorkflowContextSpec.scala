@@ -21,6 +21,8 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
   val foo: Option[String] = Some("foo")
   val snone: Option[String] = None
 
+  def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
+
   context[Option] {
     it should "lift object operator application" in {
       $(ten - three)  should equal (seven)
@@ -160,10 +162,30 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
         val c = ten / b
         15 / c
       } should equal (three)
+
+      $ {
+        val a = six
+        val b = a - four
+        val c = ten / b
+        divide(15, c)
+      } should equal (three)
+
+      $ {
+        val a = six
+        val b = 6 - 4
+        val c = ten / b
+        divide(15, c)
+      } should equal (three)
+
+      $ {
+        val a = six
+        val b = a - four
+        val c = ten / b
+        15 / 5
+      } should equal (three)
     }
 
     it should "monadically lift dependent subexpression" in {
-      def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
       $(divide(divide(four, one), divide(ten,  five))) should equal (two)
       $(divide(divide(four, one), divide(none, five))) should equal (none)
     }

@@ -111,6 +111,12 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
     val WorkflowContext(workflow: Type, instance: Tree) = workflowContext
 
+    val interfaces = instance.tpe.baseClasses map (_.fullName)
+    def assertImplements(interface: String) {
+      if (!interfaces.contains(interface))
+        c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement $interface")
+    }
+
     def resolveLiftedType(tpe: Type): Option[Type] =
       tpe.baseType(workflow.typeSymbol) match {
         case baseType @ TypeRef(_, _, typeArgs) ⇒
@@ -145,19 +151,20 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       def isUsedIn(frame: Frame) = frame exists ((_: Bind).value exists (_ equalsStructure q"$name"))
     }
     type Frame = List[Bind]
-    class Scope(val materialized: Frame, val frames: List[Frame]) {
-      def materialize(bind: Bind) = new Scope(materialized :+ bind, frames)
+    class Scope(val materialized: List[Frame], val frames: List[Frame]) {
+      def materialize(bind: Bind) = new Scope(materialized.init :+ (materialized.last :+ bind), frames)
       def :+ (bind: Bind) = new Scope(materialized, (bind :: frames.head) :: frames.tail)
-      def enter = new Scope(materialized, Nil :: frames)
-      def leave = new Scope(materialized, frames.tail)
-      def local = materialized ++ frames.flatten
+      def ++ (binds: List[Bind]) = new Scope(materialized, (frames.head ++ binds) :: frames.tail)
+      def enter = new Scope(materialized :+ Nil, Nil :: frames)
+      def leave = new Scope(materialized.init, frames.tail)
+      def local = materialized.flatten ++ frames.flatten
     }
     object Scope {
-      val empty = new Scope(Nil, List(Nil))
+      val empty = new Scope(List(Nil), List(Nil))
       def merge(scopes: List[Scope]) = {
         val materialized = scopes map (_.materialized)
         val frames = scopes map (_.frames)
-        new Scope(materialized.flatten.distinct, mergeFrames(frames))
+        new Scope(mergeFrames(materialized), mergeFrames(frames))
       }
       private def mergeFrames(frames: List[List[Frame]]) = frames.map(_.head).flatten.distinct :: frames.head.tail
     }
@@ -183,6 +190,56 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       }
     }
 
+    /* This whole function stinks. It's long, unreliable and some looks redundant.
+     * TODO: Obviously need to refactor it at some point */
+    def rewriteBlock(scope: Scope): Block ⇒ (Scope, Tree) = {
+      case Block(stats, result) ⇒
+        def contExpr(scope: Scope, name: Option[TermName], expr: Tree) = {
+          val synthName = name getOrElse TermName("_")
+          val (newscope, newexpr) = rewrite(scope.enter)(expr)
+          val frame = newscope.materialized.last
+          if (frame.isEmpty) {
+            val tpe = typeCheck(newexpr, newscope).get.tpe
+            val bind = Bind(synthName, TypeTree(tpe), newexpr)
+            val cont = (_: Boolean) ⇒ if (name.isDefined) block(q"val $synthName = $newexpr") else block(q"$newexpr")
+
+            val s = if (name.isDefined) scope :+ bind else scope
+
+            (s ++ newscope.frames.head, cont)
+          } else {
+            val value = apply(frame)(newexpr)
+            val tpe = typeCheck(newexpr, newscope).get.tpe
+            val bind = Bind(synthName, TypeTree(tpe), value)
+            val cont = (x: Boolean) ⇒ if (x) >>=(bind) compose lambda(bind) // Especially dirty hack!
+                                      else   map(bind) compose lambda(bind) // TODO: figure out a better way
+
+            val s = if (name.isDefined) scope :+ bind else scope
+
+            (s ++ newscope.frames.head, cont)
+          }
+        }
+
+        def contRewrite(scope: Scope): Tree ⇒ (Scope, Boolean ⇒ Tree ⇒ Tree) = {
+          case ValDef(NoMods, name, TypeTree(), expr) ⇒
+            contExpr(scope, Some(name), expr)
+
+          case expr ⇒
+            contExpr(scope, None, expr)
+        }
+
+        val (newscope, cont) = stats.foldLeft((scope, (x: Boolean) ⇒ (t: Tree) ⇒ t)) {
+          (acc, stat) ⇒
+            val (scope, cont) = acc
+            val (newscope, newcont) = contRewrite(scope)(stat)
+            (newscope, (x: Boolean) ⇒ cont(true) compose newcont(x))
+        }
+
+        val (newerscope, newresult) = rewrite(newscope.enter)(result)
+        val frame = newerscope.materialized.last
+        val value = if (frame.isEmpty) cont(false)(newresult) else cont(true)(apply(frame)(newresult))
+        (newerscope.leave, value)
+    }
+
     def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case Apply(fun, args) ⇒
         val (funscope,   newfun)  = rewrite(scope)(fun)
@@ -193,18 +250,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         val (newscope, newvalue) = rewrite(scope)(value)
         extractBinds(newscope, q"$newvalue.$method")
 
-      case ValDef(NoMods, name, tpt, expr) ⇒
-        val (newscope, newexpr) = rewrite(scope)(expr)
-        val tpe = typeCheck(newexpr, newscope).get.tpe
-        val newbind = Bind(name, TypeTree(tpe), newexpr)
-        (newscope :+ newbind, q"val $name: $tpt = $newexpr")
-
-      case Block(stat :: stats, expr) ⇒
-        val (statscope, newstat)  = rewrite(scope.enter)(stat)
-        val (newscope,  newblock) = rewrite(statscope.enter)(q"{ ..$stats; $expr }")
-        (newscope.leave, q"{ $newstat; $newblock }")
-
-      case Block(Nil, expr) ⇒ rewrite(scope)(expr)
+      case block: Block ⇒ rewriteBlock(scope)(block)
 
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 
@@ -230,10 +276,8 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       expr ⇒ q"(${bind.name}: ${bind.tpt}) ⇒ $expr"
     }
 
-    val interfaces = instance.tpe.baseClasses map (_.fullName)
-    def assertImplements(interface: String) {
-      if (!interfaces.contains(interface))
-        c.abort(c.enclosingPosition, s"Enclosing workflow for type $workflow does not implement $interface")
+    def block(tree: Tree): Tree ⇒ Tree = {
+      expr ⇒ q"{ $tree; $expr }"
     }
 
     def point: Tree ⇒ Tree = {
@@ -266,8 +310,16 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
           app(bind) compose apply(binds) compose lambda(bind)
     }
 
-    val (scope, expr) = rewrite(Scope.empty)(code)
-    apply(scope.materialized)(expr)
+    /* Blocks and expressions are rewritten a bit differently
+     * (block don't have materialized binds afterwards), hence two branches */
+    code match {
+      case block: Block ⇒
+        val (_, expr) = rewrite(Scope.empty)(block)
+        expr
+      case _ ⇒
+        val (scope, expr) = rewrite(Scope.empty)(code)
+        apply(scope.materialized.flatten)(expr)
+    }
   }
 }
 
