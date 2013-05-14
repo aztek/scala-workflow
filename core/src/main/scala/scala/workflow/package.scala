@@ -63,7 +63,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
     val workflowContext = if (typeTree.original != null)
                             contextFromType(c)(typeTree)
                           else
-                            contextFromEnclosingIdiom(c)
+                            contextFromEnclosure(c)
 
     rewrite(c)(code, workflowContext).asInstanceOf[Tree]
   }
@@ -94,7 +94,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
     WorkflowContext(tpe, instance)
   }
 
-  private def contextFromEnclosingIdiom(c: Context) = {
+  private def contextFromEnclosure(c: Context) = {
     val workflowContext = for {
       context ← c.openMacros.view
       attachments = context.macroApplication.attachments
