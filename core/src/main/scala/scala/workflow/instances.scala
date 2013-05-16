@@ -11,9 +11,13 @@ trait FunctorInstances {
     def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (f(lhs), rhs) }
   }
 
+  def tuple[T] = tupleL[T]
+
   implicit def tupleR[T] = new Functor[({type λ[α] = (T, α)})#λ] {
     def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
   }
+
+  def pair[T] = tupleR[T]
 
   implicit def tuple3L[M, R] = new Functor[({type λ[α] = (α, M, R)})#λ] {
     def map[A, B](f: A ⇒ B) = { case (lhs, mhs, rhs) ⇒ (f(lhs), mhs, rhs) }
@@ -86,6 +90,8 @@ trait MonadInstances {
     def point[A](a: ⇒ A) = Right(a)
     def bind[A, B](f: A ⇒ Either[T, B]) = _.right flatMap f
   }
+
+  def either[T] = right[T]
 
   implicit val id = new Monad[({type λ[α] = α})#λ] {
     def point[A](a: ⇒ A) = a
