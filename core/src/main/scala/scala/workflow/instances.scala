@@ -126,4 +126,14 @@ trait MonadInstances {
     def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ (_: V) ⇒ (_: W) ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
   }
+
+  case class State[A, S](run: S ⇒ (A, S)) {
+    def result(s: S) = { val (result, _) = run(s); result }
+    def state(s: S)  = { val (_, state)  = run(s); state  }
+  }
+
+  implicit def state[S] = new Monad[({type λ[α] = State[α, S]})#λ] {
+    def point[A](a: ⇒ A) = State[A, S]((a, _))
+    def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
+  }
 }
