@@ -194,34 +194,37 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
      * TODO: Obviously need to refactor it at some point */
     def rewriteBlock(scope: Scope): Block ⇒ (Scope, Tree) = {
       case Block(stats, result) ⇒
-        def contExpr(scope: Scope, name: Option[TermName], expr: Tree) = {
-          val synthName = name getOrElse TermName("_")
+        def contExpr(scope: Scope, signature: Option[(Modifiers, TermName, Tree)], expr: Tree) = {
           val (newscope, newexpr) = rewrite(scope.enter)(expr)
           val frame = newscope.materialized.last
           if (frame.isEmpty) {
+            val name = signature map { case (_, name, _) ⇒ name } getOrElse TermName("_")
             val tpe = typeCheck(newexpr, newscope).get.tpe
-            val bind = Bind(synthName, TypeTree(tpe), newexpr)
-            val cont = (_: Boolean) ⇒ if (name.isDefined) block(q"val $synthName = $newexpr") else block(q"$newexpr")
+            val bind = Bind(name, TypeTree(tpe), newexpr)
+            val cont = (_: Boolean) ⇒ signature map {
+                                        case (mods, _, tpt) ⇒ block(ValDef(mods, name, tpt, newexpr))
+                                      } getOrElse block(q"$newexpr")
 
-            val s = if (name.isDefined) scope :+ bind else scope
+            val newerscope = if (signature.isDefined) scope :+ bind else scope
 
-            (s ++ newscope.frames.head, cont)
+            (newerscope ++ newscope.frames.head, cont)
           } else {
             val value = apply(frame)(newexpr)
             val tpe = typeCheck(newexpr, newscope).get.tpe
-            val bind = Bind(synthName, TypeTree(tpe), value)
+            val name = signature map { case (_, term, _) ⇒ term } getOrElse TermName("_")
+            val bind = Bind(name, TypeTree(tpe), value)
             val cont = (x: Boolean) ⇒ if (x) >>=(bind) compose lambda(bind) // Especially dirty hack!
                                       else   map(bind) compose lambda(bind) // TODO: figure out a better way
 
-            val s = if (name.isDefined) scope :+ bind else scope
+            val newerscope = if (signature.isDefined) scope :+ bind else scope
 
-            (s ++ newscope.frames.head, cont)
+            (newerscope ++ newscope.frames.head, cont)
           }
         }
 
         def contRewrite(scope: Scope): Tree ⇒ (Scope, Boolean ⇒ Tree ⇒ Tree) = {
-          case ValDef(NoMods, name, TypeTree(), expr) ⇒
-            contExpr(scope, Some(name), expr)
+          case ValDef(mods, name, tpt, expr) ⇒
+            contExpr(scope, Some((mods, name, tpt)), expr)
 
           case expr ⇒
             contExpr(scope, None, expr)
