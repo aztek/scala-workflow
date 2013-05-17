@@ -21,13 +21,13 @@ trait Binding[F[_]] { self: Workflow[F] ⇒
 }
 
 trait Functor[F[_]] extends Workflow[F] with Mapping[F] {
-  def $ [G[_]](g: Functor[G]) = new FunctorT(this, g)
+  def $ [G[_]](g: Functor[G]) = new FunctorCompose(this, g)
 }
 
 object Functor extends FunctorInstances
 
 trait SemiIdiom[F[_]] extends Functor[F] with Applying[F] {
-  def $ [G[_]](g: SemiIdiom[G]) = new SemiIdiomT(this, g)
+  def $ [G[_]](g: SemiIdiom[G]) = new SemiIdiomCompose(this, g)
 }
 
 object SemiIdiom extends SemiIdiomInstances
@@ -35,7 +35,7 @@ object SemiIdiom extends SemiIdiomInstances
 trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] {
   def map[A, B](f: A ⇒ B) = app(point(f))
 
-  def $ [G[_]](g: Idiom[G]) = new IdiomT(this, g)
+  def $ [G[_]](g: Idiom[G]) = new IdiomCompose(this, g)
 }
 
 object Idiom extends IdiomInstances
