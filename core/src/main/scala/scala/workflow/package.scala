@@ -292,6 +292,11 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       expr ⇒ q"(${bind.name}: ${bind.tpt}) ⇒ $expr"
     }
 
+    def isIdentity: Tree ⇒ Boolean = {
+      case Function(List(arg), Ident(ref)) if arg.name == ref ⇒ true
+      case _ ⇒ false
+    }
+
     def block(tree: Tree): Tree ⇒ Tree = {
       expr ⇒ q"{ $tree; $expr }"
     }
@@ -303,7 +308,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
     def map(bind: Bind): Tree ⇒ Tree = {
       assertImplements("scala.workflow.Mapping")
-      expr ⇒ q"$instance.map($expr)(${bind.value})"
+      expr ⇒ if (isIdentity(expr)) bind.value else q"$instance.map($expr)(${bind.value})"
     }
 
     def app(bind: Bind): Tree ⇒ Tree = {
