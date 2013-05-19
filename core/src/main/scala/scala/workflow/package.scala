@@ -166,6 +166,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         val frames = scopes map (_.frames)
         new Scope(mergeFrames(materialized), mergeFrames(frames))
       }
+      def merge(scopes: Scope*): Scope = merge(scopes.toList)
       private def mergeFrames(frames: List[List[Frame]]) = frames.map(_.head).flatten.distinct :: frames.head.tail
     }
 
@@ -243,6 +244,16 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         (newerscope.leave, value)
     }
 
+    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
+      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
+        val (newscope, newcondition) = rewrite(scope)(condition)
+        val (consscope, newconsequent) = rewrite(newscope)(consequent)
+        val (altscope, newalternative) = rewrite(newscope)(alternative)
+        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
+      case expr ⇒
+        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
+    }
+
     def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case Apply(fun, args) ⇒
         val (funscope,   newfun)  = rewrite(scope)(fun)
@@ -254,6 +265,8 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         extractBinds(newscope, q"$newvalue.$method")
 
       case block: Block ⇒ rewriteBlock(scope)(block)
+
+      case condition: If ⇒ rewriteIf(scope)(condition)
 
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 
