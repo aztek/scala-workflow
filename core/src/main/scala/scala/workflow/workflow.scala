@@ -4,23 +4,23 @@ import language.higherKinds
 
 trait Workflow[F[_]]
 
-trait Mapping[F[_]] { self: Workflow[F] ⇒
+trait Mapping[F[_]] extends Workflow[F] {
   def map[A, B](f: A ⇒ B): F[A] ⇒ F[B]
 }
 
-trait Applying[F[_]] { self: Workflow[F] ⇒
+trait Applying[F[_]] extends Workflow[F] {
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 }
 
-trait Pointing[F[_]] { self: Workflow[F] ⇒
+trait Pointing[F[_]] extends Workflow[F] {
   def point[A](a: ⇒ A): F[A]
 }
 
-trait Binding[F[_]] { self: Workflow[F] ⇒
+trait Binding[F[_]] extends Workflow[F] {
   def bind[A, B](f: A ⇒ F[B]): F[A] ⇒ F[B]
 }
 
-trait Functor[F[_]] extends Workflow[F] with Mapping[F] {
+trait Functor[F[_]] extends Mapping[F] {
   def $ [G[_]](g: Functor[G]) = new FunctorCompose(this, g)
 }
 
