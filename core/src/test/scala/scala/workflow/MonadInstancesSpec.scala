@@ -127,21 +127,21 @@ class MonadInstancesSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-//  "Functions" should "work" in {
-//    context(function[String]) {
-//      val chars   = (s: String) ⇒ s.length
-//      val letters = (s: String) ⇒ s.count(_.isLetter)
-//
-//      val nonletters = $(chars - letters)
-//      nonletters("R2-D2") should equal (3)
-//
-//      val weird = $(chars * 2)
-//      weird("C-3PO") should equal (10)
-//
-//      val justFive = $(5)
-//      justFive("anything") should equal (5)
-//    }
-//  }
+  "Functions" should "work" in {
+    context(function[String]) {
+      val chars   = (s: String) ⇒ s.length
+      val letters = (s: String) ⇒ s.count(_.isLetter)
+
+      val nonletters = $(chars - letters)
+      nonletters("R2-D2") should equal (3)
+
+      val weird = $(chars * 2)
+      weird("C-3PO") should equal (10)
+
+      val justFive = $(5)
+      justFive("anything") should equal (5)
+    }
+  }
 
   "Functions of two arguments" should "work" in {
     context(function2[String, Char]) {
