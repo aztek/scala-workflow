@@ -8,7 +8,7 @@ trait Mapping[F[_]] extends Workflow[F] {
   def map[A, B](f: A ⇒ B): F[A] ⇒ F[B]
 }
 
-trait Applying[F[_]] extends Workflow[F] {
+trait Applying[F[_]] extends Workflow[F] with Mapping[F] {
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 }
 
@@ -43,7 +43,7 @@ object Idiom extends IdiomInstances
 trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
 
 trait Monad[F[_]] extends Idiom[F] with Binding[F] {
-  def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B] = bind(a ⇒ bind((g: A ⇒ B) ⇒ point(g(a)))(f))
+  def app[A, B](f: F[A ⇒ B]) = bind(a ⇒ bind((g: A ⇒ B) ⇒ point(g(a)))(f))
 }
 
 object Monad extends MonadInstances
