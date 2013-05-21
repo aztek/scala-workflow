@@ -244,15 +244,15 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
         (newerscope.leave, value)
     }
 
-    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
-      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
-        val (newscope, newcondition) = rewrite(scope)(condition)
-        val (consscope, newconsequent) = rewrite(newscope)(consequent)
-        val (altscope, newalternative) = rewrite(newscope)(alternative)
-        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
-      case expr ⇒
-        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
-    }
+//    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
+//      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
+//        val (newscope, newcondition) = rewrite(scope)(condition)
+//        val (consscope, newconsequent) = rewrite(newscope)(consequent)
+//        val (altscope, newalternative) = rewrite(newscope)(alternative)
+//        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
+//      case expr ⇒
+//        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
+//    }
 
     def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case Apply(fun, args) ⇒
@@ -266,7 +266,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
       case block: Block ⇒ rewriteBlock(scope)(block)
 
-      case condition: If ⇒ rewriteIf(scope)(condition)
+//      case condition: If ⇒ rewriteIf(scope)(condition)
 
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 

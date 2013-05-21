@@ -235,18 +235,18 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
     } should equal (five)
   }
 
-  it should "rewrite if-s" in {
-    def run(a: Int) =
-      workflow[Option] {
-        val b = 6
-        if (a > seven) {
-          val c = two
-          b * c
-        } else
-          b - 2
-      }
-
-    run(8) should equal (Some(12))
-    run(6) should equal (four)
-  }
+//  it should "rewrite if-s" in {
+//    def run(a: Int) =
+//      workflow[Option] {
+//        val b = 6
+//        if (a > seven) {
+//          val c = two
+//          b * c
+//        } else
+//          b - 2
+//      }
+//
+//    run(8) should equal (Some(12))
+//    run(6) should equal (four)
+//  }
 }
