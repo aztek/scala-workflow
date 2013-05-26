@@ -158,43 +158,4 @@ class MonadInstancesSpec extends FlatSpec with ShouldMatchers {
       justTrue("anything")('X') should equal (true)
     }
   }
-
-  "States" should "work" in {
-    type Stack = List[Int]
-    type Error = String
-    type Result = Either[Error, Stack]
-
-    val stackLang = state[Result]
-
-    def command(f: Stack ⇒ Result) = State[Unit, Result](st ⇒ ( {}, right[Error].bind(f)(st)))
-
-    def execute(program: State[Unit, Result]) = program.state(Right(Nil))
-
-    def put(value: Int) = command {
-      case stack ⇒ Right(value :: stack)
-    }
-
-    def dup = command {
-      case head :: tail ⇒ Right(head :: head :: tail)
-      case _ ⇒ Left("Stack underflow while executing `dup`")
-    }
-
-    def rot = command {
-      case a :: b :: stack ⇒ Right(b :: a :: stack)
-      case _ ⇒ Left("Stack underflow while executing `rot`")
-    }
-
-    def sub = command {
-      case a :: b :: stack ⇒ Right((b - a) :: stack)
-      case _ ⇒ Left("Stack underflow while executing `sub`")
-    }
-
-    context(stackLang) {
-      val programA = $ { put(5); dup; put(7); rot; sub }
-      execute(programA) should equal(Right(List(2, 5)))
-
-      val programB = $ { put(5); dup; sub; rot; dup }
-      execute(programB) should equal(Left("Stack underflow while executing `rot`"))
-    }
-  }
 }
