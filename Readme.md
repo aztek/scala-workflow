@@ -150,7 +150,7 @@ Each method corresponds to a particular feature of workflow context.
 - `bind` is used to desugar expressions with arbitrary many arbitrary dependent
   lifted values.
 
-You can define workflow instances simply by mixing abovementioned traits, or
+You can define workflow instances simply by mixing above-mentioned traits, or
 using one of predefined shortcuts, representing commonly used algebraic
 structures.
 
@@ -176,7 +176,7 @@ of other syntax extensions, like `for`/`do`-comprehension or idiom brackets,
 expect you to have complete monad/idiom instance, even though none of them
 produce `point` application. 
 
-Nontheless, using `Idiom` or `Monad` might be convenient, because they have
+Nonetheless, using `Idiom` or `Monad` might be convenient, because they have
 some of the methods already implemented.
 
 How does it work?
@@ -278,7 +278,7 @@ Currently, you can only combine workflows using terms, but not types (i.e. that
 would be really cool to be able to write `workflow[List $ Option]`, but that
 feature is not supported yet).
 
-Some exmaples of effectful computations
+Some examples of effectful computations
 ---------------------------------------
 ### Evaluator for a language of expressions
 McBride and Patterson's paper describes a simple evaluator for a language of
@@ -464,7 +464,7 @@ Or `B`-combinator (Scalas `Function.compose` method or Haskells `(.)`):
 ```scala
 // B = S (K S) K
 def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].point(function[C].app[A, B]))(function[C].point)
-// More consicely with map
+// More concisely with map
 def b[A, B, C] = function[A ⇒ B].map(function[C].app[A, B])(function[C].point)
 ```
 
