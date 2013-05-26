@@ -10,30 +10,46 @@ import org.scalatest.matchers.ShouldMatchers
 class ReadmeSpec extends FlatSpec with ShouldMatchers {
   behavior of "Examples from Readme file"
 
-  "Examples from 'Quick examples' section" should "be correct" in {
+  "Examples from 'Quick start' section" should "be correct" in {
     context[Option] {
       $(Some(42) + 1) should equal (Some(43))
       $(Some(10) + Some(5) * Some(2)) should equal (Some(20))
     }
-  }
 
-  "Examples from 'Idiom hierarchy'" should "be correct" in {
-    val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
-      def point[A](a: ⇒ A) = (0, a)
-      def app[A, B](ff: (Int, A ⇒ B)) = {
-        case (i, a) ⇒
-          val (i2, f) = ff
-          (i + i2, f(a))
-      }
+    context[List] {
+      $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
+      $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
     }
 
-    context(intTuple) {
-      val foo = (42, "foo")
-      val bar = (13, "bar")
-      $(foo + "bar") should equal (42, "foobar")
-      $("qux") should equal (0, "qux")
-      $(foo + bar) should equal (55, "foobar")
+    context(zipList) {
+      $(List(1, 2, 3, 4) * List(2, 3, 4)) should equal (List(2, 6, 12))
     }
+
+    context(map[String]) {
+      $(Map("foo" → 10, "bar" → 5) * 2) should equal (Map("foo" → 20, "bar" → 10))
+    }
+
+    context(function[String]) {
+      val chars   = (s: String) ⇒ s.length
+      val letters = (s: String) ⇒ s.count(_.isLetter)
+      val nonletters = $(chars - letters)
+      nonletters("R2-D2") should equal (3)
+    }
+
+    def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
+    context[Option] {
+      $ {
+        val x = divide(1, 2)
+        val y = divide(4, x)
+        divide(y, x)
+      } should equal (Some(16))
+    }
+
+    workflow[Option] {
+      val x = divide(1, 2)
+      val y = divide(4, x)
+      divide(y, x)
+    } should equal (Some(16))
   }
 
   "Example from 'How does it work?' section" should "be correct" in {
@@ -42,7 +58,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  "Examples from 'Syntax of idioms'" should "be correct" in {
+  "Examples from 'Syntax of workflows'" should "be correct" in {
     val x = context[List] {
       $(List(2, 5) * List(3, 7))
     }
@@ -53,46 +69,17 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 
     val z = $[List](List(2, 5) * List(3, 7))
 
+    val t = workflow(list) { List(2, 5) * List(3, 7) }
+
     x should equal (y)
     y should equal (z)
+    t should equal (z)
   }
 
-  "Example from 'Idioms composition'" should "be correct" in {
+  "Example from 'Composition of workflows'" should "be correct" in {
     context(list $ option) {
-      val xs = List(Some(2), Some(3), None)
-      $(xs * 10) should equal (List(Some(20), Some(30), None))
+      $(List(Some(2), Some(3), None) * 10) should equal (List(Some(20), Some(30), None))
     }
-  }
-
-  "Example from 'When are idioms useful?'" should "be correct" in {
-    import java.util.Date
-
-    type Json = String
-    def parseId(json: Json): Int = ???
-    def parseName(json: Json): Option[String] = ???
-    def parseBirthday(json: Json): Option[Long] = ???
-    def parseDept(json: Json): String = ???
-
-    case class Person(id: Int, name: String, birthday: Date, dept: String)
-
-    def parse(json: Json): Option[Person] =
-      for {
-        name ← parseName(json)
-        birthday ← parseBirthday(json)
-      } yield {
-        val id = parseId(json)     // say, we're confident, that
-        val dept = parseDept(json) // those can be extracted
-        Person(id, name, new Date(birthday), dept)
-      }
-
-    def parse2(json: Json): Option[Person] =
-      context[Option] {
-        val id = parseId(json)
-        val name = parseName(json)
-        val birthday = parseBirthday(json)
-        val dept = parseDept(json)
-        $(Person(id, name, new Date(birthday), dept))
-      }
   }
 
   sealed trait Expr
@@ -123,7 +110,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     eval(testExpr2)(env) should equal (None)
   }
 
-  "Idiom eval" should "be correct" in {
+  "Workflow eval" should "be correct" in {
     def eval: Expr ⇒ Env ⇒ Option[Int] =
       context(function[Env] $ option) {
         case Var(x) ⇒ fetch(x)

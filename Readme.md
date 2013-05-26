@@ -1,219 +1,206 @@
-Scala idioms
-============
-`scala-idioms` allows you to organize computations nicely in the predefined set
-of computational contexts with the help of enhanced version of _idiom brackets_.
-The main source of inspiration is the paper
-[Applicative Programming with Effects](http://www.soi.city.ac.uk/~ross/papers/Applicative.html)
-by Conor McBride and Ross Paterson. The syntax is somewhat borrowed from
-[idioms notation](http://www.cs.st-andrews.ac.uk/~eb/Idris/donotation.html) of
-[Idris](http://idris-lang.org) programming language.
+Scala workflow
+==============
+`scala-workflow` helps to nicely organize applicative and monadic computations
+in Scala with 2.11 macros, resembling _`for`-comprehension_ and some enhanced
+version of _idiom brackets_.
 
-`scala-idioms` is built around [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
+`scala-workflow` is built around [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
 
 ![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
 
-Quick examples
---------------
-```scala
-import idioms._
+Quick start
+-----------
+Import `workflow` interface.
 
-idiom[Option] {
+```scala
+import workflow._
+```
+
+You will now have three macros at hand — `context`, `$` and `workflow`. Wrap a
+block of code in `context` and the argument of `$` will begin to act funny.
+
+```scala
+context[Option] {
   $(Some(42) + 1) should equal (Some(43))
   $(Some(10) + Some(5) * Some(2)) should equal (Some(20))
 }
 
-idiom[List] {
+context[List] {
   $(List(1, 2, 3) * 2) should equal (List(2, 4, 6))
   $(List("a", "b") + List("x", "y")) should equal (List("ax", "ay", "bx", "by"))
 }
+```
 
-idiom(zipList) {
+Enclosing `context` macro takes type constructor `F[_]` as an argument and
+makes all the `$`s inside evaluate their arguments as if everything of type
+`F[T]` there was of type `T`, except it retains _computational effects_,
+associated with `F`.
+
+The exact rules of evaluation are defined in an object, that extends special
+`scala.workflow.Workflow[F[_]]` trait. Such objects can either be implicitly
+summoned by type constructor name (like the ones shown above), or passed
+explicitly, like `zipList` below.
+
+```scala
+context(zipList) {
   $(List(1, 2, 3, 4) * List(2, 3, 4)) should equal (List(2, 6, 12))
 }
+```
 
-idiom(function[String]) {
+There are numerous of `Workflow[F[_]]` objects you can find in `instances.scala`
+file. All of them are instances of _functors_, _applicative functors_,
+_monads_ and a couple of other intermediate structures.
+
+```scala
+context(map[String]) {
+  $(Map("foo" → 10, "bar" → 5) * 2) should equal (Map("foo" → 20, "bar" → 10))
+}
+
+context(function[String]) {
   val chars   = (s: String) ⇒ s.length
   val letters = (s: String) ⇒ s.count(_.isLetter)
   val nonletters = $(chars - letters)
   nonletters("R2-D2") should equal (3)
 }
+```
 
-idiom(map[String]) {
-  $(Map("foo" → 10, "bar" → 5) * 2) should equal (Map("foo" → 20, "bar" → 10))
+You can pass complex blocks of code to `$`.
+
+```scala
+def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
+context[Option] {
+  $ {
+    val x = divide(1, 2)
+    val y = divide(4, x)
+    divide(y, x)
+  } should equal (Some(16))
 }
 ```
 
-What's an idiom?
-----------------
-Following the original paper, idioms (also called _applicative functors_) are
-algebraic structures with two operators `pure` and `app` of certain types, that
-are actively used in Haskell and other functional programming languages to
-express computations with effects. E.g., `Option` and `List` are examples of
-idioms, representing, correspondingly, flawed and non-deterministic
-computations.
-
-In the same paper, _idiom brackets_ is a fairly trivial syntactic
-transformation, that wraps a function in `pure` call and replace each function
-application with `app` call. That way, only a single function, applied to idiom
-instances, is supposed to be put inside the brackets.
-
-`scala-idioms` tries to bring this notion to Scala with several enhancements.
-
-Idioms hierarchy
-----------------
-Instead of a fixed applicative functor class, `scala-idioms` offers a refined
-hierarchy of contexts, starting with the trait `Functor[F[_]]`.
+Nested `context` and `$` calls might look awkward, so instead you can use
+special syntactic sugar, called `workflow`.
 
 ```scala
-trait Functor[F[_]] {
+workflow[Option] {
+  val x = divide(1, 2)
+  val y = divide(4, x)
+  divide(y, x)
+} should equal (Some(16))
+```
+
+Just like in `context`, you can pass either type constructor or workflow
+object.
+
+What is workflow?
+-----------------
+The goal of `scala-workflow` is to provide boilerplate-free syntax for
+computations with effects, encoded with monads and applicative functors.
+_Workflow_ abstracts the concept of effectful value.
+
+Workflow instances provide methods, that are used for desugaring code
+in correspondent computational contexts. The more methods an instance has, the
+more powerful it is (in the same sense as monads are more powerful than
+applicatives and those are more powerful than functors), and the richer
+language features they can be applied to.
+
+The ultimate goal is to support the whole set of Scala language features. For
+now, however, only literals, function applications and `val` definitions are
+supported. Still, `scala-workflow` is actively developed and you can expect
+new features soon.
+
+Hierarchy of workflows
+----------------------
+The hierarchy of workflows is built around an empty `Workflow[F[_]]` trait and
+several derived traits, that add methods. So far there are four of them:
+
+```scala
+trait Pointing[F[_]] extends Workflow[F] {
+  def point[A](a: ⇒ A): F[A]
+}
+
+trait Mapping[F[_]] extends Workflow[F] {
   def map[A, B](f: A ⇒ B): F[A] ⇒ F[B]
 }
-```
 
-This `map` is the same `map` there is in `List`, `Option` and other standard
-Scala classes. Of course, `scala-idioms` already has `Functor` instance for
-them all. You can define your own instance for, say, tuples of two elements.
-
-```scala
-val intTuple = new Functor[({type λ[α] = (Int, α)})#λ] {
-  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
-}
-```
-
-The hacky thing with `#λ` is called _type lambda_ and is used to define type
-constructor (sadly, you can't just write something like `(Int, _)` in Scala).
-
-That instance now can be used to define _idiomatic context_, i.e. a set of
-rules, that will be applied to change semantics of function application inside
-idiom brackets (that look like `$` macro call). For example,
-
-```scala
-idiom(intTuple) {
-  val foo = (42, "foo")
-  $(foo + "bar")
-}
-```
-
-will produce `(42, "foobar")`. Writing `$((42, "foo") + (13, "bar"))`, however,
-will produce an error, because there's no way for `scala-idioms` to decide,
-what should be done with `42` and `13` (addition, multiplication?).
-
-Say, we want it to be addition. For that, an extention of `Functor[F[_]]`,
-called `SemiIdiom[F[_]]` is needed.
-
-```scala
-trait SemiIdiom[F[_]] extends Functor[F] {
+trait Applying[F[_]] extends Workflow[F] with Mapping[F] {
   def app[A, B](f: F[A ⇒ B]): F[A] ⇒ F[B]
 }
-```
 
-Semi-idiom basically defines a way to `map` with a function of more then one
-argument. Semi-idiom instance for a tuple migth look like
-
-```scala
-val intTuple = new SemiIdiom[({type λ[α] = (Int, α)})#λ] {
-  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
-  def app[A, B](ff: (Int, A ⇒ B)) = {
-    case (i, a) ⇒
-      val (i2, f) = ff
-      (i + i2, f(a))
-  }
+trait Binding[F[_]] extends Workflow[F] {
+  def bind[A, B](f: A ⇒ F[B]): F[A] ⇒ F[B]
 }
 ```
 
-So now
+Each method corresponds to a particular feature of workflow context.
+- `point` allows to put pure value inside the workflow. It is only generated
+  when you call `$(a)` for some pure `a`.
+
+- `map` is used to map over one lifted value in the expression. This is the
+  same `map` you can find in Scalas `List`, `Option` and other classes.  
+
+- `app` is used to map over more that one independently lifted values within the
+  context. "Independently" means that you can evaluate lifted arguments in any
+  order. Example of an expression with lifted values that depend on each other:
+  `$(divide(divide(1, 2), 3))` (with `divide` definition taken from "Quick start"
+  section). Both `divide` calls are lifted, but we can only evaluate outmost
+  `divide` after the inner one has been evaluated. `app` cannot be used without
+  `map`, hence the inheritance.
+
+- `bind` is used to desugar expressions with arbitrary many arbitrary dependent
+  lifted values.
+
+You can define workflow instances simply by mixing abovementioned traits, or
+using one of predefined shortcuts, representing commonly used algebraic
+structures.
 
 ```scala
-idiom(intTuple) {
-  val foo = (42, "foo")
-  val bar = (13, "bar")
-  $(foo + bar)
+trait Functor[F[_]] extends Mapping[F]
+
+trait SemiIdiom[F[_]] extends Functor[F] with Applying[F]
+
+trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] {
+  def map[A, B](f: A ⇒ B) = app(point(f))
+}
+
+trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
+
+trait Monad[F[_]] extends Idiom[F] with Binding[F] {
+  def app[A, B](f: F[A ⇒ B]) = bind(a ⇒ bind((g: A ⇒ B) ⇒ point(g(a)))(f))
 }
 ```
 
-will be `(55, "foobar")`. Neat!
+Note, that `Functor`/`Idiom`/`Monad` is merely a shortcut. You are not required
+to implement any of it particularly to be able to use workflow contexts. Some
+of other syntax extensions, like `for`/`do`-comprehension or idiom brackets,
+expect you to have complete monad/idiom instance, even though none of them
+produce `point` application. 
 
-But there's one silly case, where semi-idiom `intTuple` still wouldn't work.
-This one: `$("foo")`. Again, `scala-idioms` has no idea of what should be put
-as the first element of a tuple. There's another extension to `Functor[F[_]]`,
-called `Pointed[F[_]]`, that is used to tell precisely that.
-
-```scala
-trait Pointed[F[_]] extends Functor[F] {
-  def pure[A](a: ⇒ A): F[A]
-}
-```
-
-Finally, there's `Idiom[F[_]]` trait, that incorporates all the methods from
-`Functor[F[_]]`, `SemiIdiom[F[_]]` and `Pointed[F[_]]`. You can see now, how
-instances of `Idiom[F[_]]` are the most powerful ones — they have no
-restrictions on the number of idiom values inside the brackets.
-
-```scala
-trait Idiom[F[_]] extends SemiIdiom[F] with Pointed[F]
-```
-
-Most built-in instances in `scala-idioms` are `Idiom`s and indeen we can define
-idiom for `intTuple`.
-
-```scala
-val intTuple = new Idiom[({type λ[α] = (Int, α)})#λ] {
-  def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
-  def pure[A](a: ⇒ A) = (0, a)
-  def app[A, B](ff: (Int, A ⇒ B)) = {
-    case (i, a) ⇒
-      val (i2, f) = ff
-      (i + i2, f(a))
-  }
-}
-```
-
-Now it can be used everywhere.
-
-```scala
-idiom(intTuple) {
-  val foo = (42, "foo")
-  val bar = (13, "bar")
-  $(foo + "bar") should equal (42, "foobar")
-  $("qux") should equal (0, "qux")
-  $(foo + bar) should equal (55, "foobar")
-}
-```
-
-Note, that refined idiom hierarchy is introduced because not all things, that
-we would like to work with via idiom brackets, are applicative functors. You can
-find examples of semi-idioms that are not idioms and fuctors that are not
-semi-idioms in `SemiIdiomInstances` and `FunctorInstances` traits.
+Nontheless, using `Idiom` or `Monad` might be convenient, because they have
+some of the methods already implemented.
 
 How does it work?
 -----------------
-Idiom brackets in `scala-idioms` are more flexible regarding the structure of
-the expression inside and currently support arbitrarily deeply nested function
-applications. For that, some extra work needs to be done, besides idiom method
-calls generation.
-
-Since we can't just lift function arguments into the idiomatic context, the
-main question is, how to decide which subexpressions should be lifted.
-
 Current implementation uses untyped macros and takes untyped Scala AST as an
 argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
-starting with the most common subexpressions) and find, which of them
+starting with the most nested subexpressions) and find, which of them
 typechecks successfully and the result type corresponds to the type of the
-idiom.
+workflow. If those are found, they are being replaces with their unlifted
+counterparts, and the whole thing starts over again, until the whole expression
+typechecks correctly and we have a list of lifted values at hand.
 
 Consider the example below.
 
 ```scala
-idiom(option) {
+context(option) {
   $(2 * 3 + Some(10) * Some(5))
 }
 ```
 
-The whole expression does not typecheck. `2 * 3` typechecks to `Int` and
-therefore doesn't need to be lifted. `Some(10) + Some(5)`, does not typecheck,
-but each of its arguments typechecks to `Option[Int]` (well, technically,
-`Some[Int]`, but we can handle that), so both arguments get lifted.
+All the numbers typecheck and are not inside `Option`, so they are left as is.
+`2 * 3` also typechecks to `Int` and is left as is. `Some(10)` and `Some(5)`
+both typechecks to `Option[Int]` (well, technically, `Some[Int]`, but we can
+handle that), so both arguments are lifted.
 
 Generated code will look like this.
 
@@ -221,118 +208,78 @@ Generated code will look like this.
 option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5))
 ```
 
-It is useful to observe, how the number of idiom values inside the brackets
-affects the produced code and sets constrains on the enclosing idiomatic
-context.
+Special analysis takes care of dependencies between lifted values to be sure to
+produce `bind` instead of `app` where needed.
 
-- No idiom values inside produce `pure` method call (and therefore require
-  idiomatic context to implement `Pointed`)
-
-- One idiom value inside produces `map` method call (and therefore require
-  idiomatic context to implement `Functor`)
-
-- More than one idiom value produce `map` and `app` methods (and therefore
-  require idiomatic context to implement `SemiIdiom`)
-
-Syntax of idioms
-----------------
-Idiom block is defined with `idiom` macro that either takes an idiom instance
-as an argument, or a type constructor `F[_]`, such that there is some idiom
-instance (`Functor[F]`, `SemiIdiom[F]`, `Pointed[F]` or `Idiom[F]`) defined
-somewhere in the implicits scope.
+Syntax of workflows
+-------------------
+Workflow context is defined with `context` macro that either takes a workflow
+instance as an argument, or a type constructor `F[_]`, such that there is some
+workflow instance defined somewhere in the implicits scope.
 
 The following examples are equivalent.
 
 ```scala
-import idioms._
-
-idiom[List] {
+context[List] {
   $(List(2, 5) * List(3, 7))
 }
 
-idiom(list) {
+context(list) {
   $(List(2, 5) * List(3, 7))
 }
 ```
 
-There are plenty of built-in idiom instances in traits `FunctorInstances`,
-`SemiIdiomInstances` and `IdiomInstances`. They are all mixed to the package
-object of `scala.idioms`, so once you have `scala.idioms._` imported, you get
-access to them all. Alternatively, you can import just the macros
-`import idioms.{idiom, $}` and access idiom instances from `Functor`,
-`SemiIdiom` and `Idiom` objects.
-
-Macro `$` takes idiomatic context from the closest `idiom` block.
-Alternatively, you can provide type constructor, whose idiom instance will be
-taken from the implicits scope.
+Macro `$` takes workflow context from the closest `workflow` block.
+Alternatively, you can provide type constructor, whose workflow instance will
+be taken from the implicits scope.
 
 ```scala
 $[List](List(2, 5) * List(3, 7))
 ```
 
-That way, `$` will disregard any enclosing `idiom` block and will work within
-`Idiom[List]` context.
+That way, `$` will disregard any enclosing `context` block and will work within
+`Workflow[List]` context.
 
-Idioms composition
-------------------
-Functors, pointeds, semi-idioms and idioms are all composable. There are
-special _idiom composition_ classes (`FunctorT`, `PointedT`, `SemiIdiomT` and
-`IdiomT` correspondingly) that allow you, say, having instances of `Idiom[F]`
-and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either create
-`IdiomT` object directly with class constructor, or use `$` method of the class
-`Idiom`. You can also combine idioms of different classes with the same syntax,
-the result idiom will be of the same class as the weaker argument.
+Nested applications of `context` and `$` can be replaced with `workflow` macro.
+You are encouraged to do so for complex blocks of code. You are discourage to
+use `$` inside. `workflow` either takes a workflow instance as an argument, or
+a type constructor `F[_]` and rewrites the block of code in the same way as `$`.
 
 ```scala
-idiom(list $ option) {
-  val xs = List(Some(2), Some(3), None)
-  $(xs * 10) should equal (List(Some(20), Some(30), None))
+workflow(list) { List(2, 5) * List(3, 7) }
+```
+
+There are plenty of built-in workflow instances in traits `FunctorInstances`,
+`SemiIdiomInstances`, `IdiomInstances` and `MonadInstances`. They are all
+mixed to the package object of `scala.workflow`, so once you have `workflow._`
+imported, you get access to them all. Alternatively, you can import just the
+macros `import workflow.{context, workflow, $}` and access workflow instances
+from `Functor`, `SemiIdiom`, `Idiom` and `Monad` objects.
+
+Composition of workflows
+------------------------
+Functors, semi-idioms and idioms are all composable, monads and semi-monads are
+not. There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
+and `IdiomCompose` correspondingly) that allow you, say, having instances of
+`Idiom[F]` and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either
+create `IdiomCompose` object directly with class constructor, or use `$` method
+of the class `Idiom`.
+```scala
+context(list $ option) {
+  $(List(Some(2), Some(3), None) * 10) should equal (List(Some(20), Some(30), None))
 }
 ```
+You can also combine workflows of different classes with the same syntax, the
+result workflow will implement the weaker interface of the two. For instance,
+`map[String] $ option` will implement `Functor`, because it's weaker than
+`option`'s `Monad`.
 
-Currently, you can only combine idioms using terms, but not types (i.e. that
-would be really cool to be able to write `idiom[List $ Option]`, but that
+Currently, you can only combine workflows using terms, but not types (i.e. that
+would be really cool to be able to write `workflow[List $ Option]`, but that
 feature is not supported yet).
 
-When are idioms useful?
------------------------
-Short answer, they might be a more concise substitute of `for`-expressions.
-Consider the example below, where we parse JSON string to some `Person` object.
-
-```scala
-def parse(json: Json): Option[Person] =
-  for {
-    name ← parseName(json)
-    birthday ← parseBirthday(json)
-  } yield {
-    val id = parseId(json)
-    val dept = parseDept(json)
-    Person(id, name, new Date(birthday), dept)
-  }
-```
-
-Note, how the syntax gets rather awkward, when we separate pure values from
-values, extracted from idiomatic context. With idiom brackets we can compose
-the same code in almost imperative manner. 
-
-```scala
-def parse2(json: Json): Option[Person] =
-  idiom[Option] {
-    val id = parseId(json)
-    val name = parseName(json)
-    val birthday = parseBirthday(json)
-    val dept = parseDept(json)
-    $(Person(id, name, new Date(birthday), dept))
-  }
-```
-
-Keep in mind, though, that `for` defines more powerful _monadic_ computational
-context and it might not be possible to express some things with just idiom
-brackets. Specifically, working inside a monad, you can refer to results of
-previous computations and that is something idioms can't do.
-
-Any other interesting examples?
--------------------------------
+Some exmaples of effectful computations
+---------------------------------------
 ### Evaluator for a language of expressions
 McBride and Patterson's paper describes a simple evaluator for a language of
 expressions. Following that examples, here's how it would look like here.
@@ -370,12 +317,12 @@ def eval(expr: Expr)(env: Env): Option[Int] =
 
 Note, that one have to explicitly pass the environment around and to have
 rather clumsy syntax to compute the addition. This can be simplified, once
-wrapped into the idiom `Env ⇒ Option[_]`, which can either be constructed by
-hand, or composed of `Env ⇒ _` and `Option` idioms.
+wrapped into the workflow `Env ⇒ Option[_]`, which can either be constructed
+by hand, or composed of `Env ⇒ _` and `Option` workflows.
 
 ```scala
 def eval: Expr ⇒ Env ⇒ Option[Int] =
-  idiom(function[Env] $ option) {
+  context(function[Env] $ option) {
     case Var(x) ⇒ fetch(x)
     case Val(value) ⇒ $(value)
     case Add(x, y) ⇒ $(eval(x) + eval(y))
@@ -383,7 +330,7 @@ def eval: Expr ⇒ Env ⇒ Option[Int] =
 ```
 
 ### Functional reactive programming
-`scala-idioms` can be used as syntactic sugar for external libraries and
+`scala-workflow` can be used as syntactic sugar for external libraries and
 programming paradigms. In this example, a very simple version of [Functional
 reactive programming](http://en.wikipedia.org/wiki/Functional_reactive_programming)
 framework is implemented as `Idiom` instance.
@@ -399,19 +346,17 @@ trait Cell[T] {
 }
 ```
 
-Idiom instance defines cells, that either contain atomic value that can be
-reassign or dependent cells, that take value of some other cell to
-compute their own (reassigning them doesn't make sense, hence the exception).
+Workflow instance, implemented as `Idiom`, defines cells, that either contain
+atomic value that can be reassign or dependent cells, that take value of some
+other cell to compute their own (reassigning them doesn't make sense, hence
+the exception).
 
 ```scala
 val frp = new Idiom[Cell] {
-  def pure[A](a: ⇒ A) = new Cell[A] {
+  def point[A](a: ⇒ A) = new Cell[A] {
     private var value = a
     override def := (a: A) { value = a }
     def ! = value
-  }
-  def map[A, B](f: A ⇒ B) = a ⇒ new Cell[B] {
-    def ! = f(a!)
   }
   def app[A, B](f: Cell[A ⇒ B]) = a ⇒ new Cell[B] {
     def ! = f!(a!)
@@ -422,7 +367,7 @@ val frp = new Idiom[Cell] {
 With that instance we can organize reactive computations with simple syntax.
 
 ```scala
-idiom(frp) {
+context(frp) {
   val a = $(10)
   val b = $(5)
 
@@ -436,35 +381,102 @@ idiom(frp) {
 }
 ```
 
+### Monadic interpreter for stack programming language
+If you enjoy embedding monadic domain-specific languages in your Scala programs,
+you might like syntactical perks `scala-workflow` could bring. Consider a
+little embedded stack programming language.
+
+We represent stack as a regular List, and the result of a program, that
+manipulates with a stack, as either a modified stack or an error message
+(such as "stack underflow").
+
+```scala
+type Stack = List[Int]
+type Result = Either[String, Stack]
+```
+
+The evaluation of the program will use `state` monad, that will disregard
+the result of any command, but preserve the state of the stack.
+
+```scala
+val stackLang = state[Result]
+
+def execute(program: State[Unit, Result]) = program.state(Right(Nil))
+```
+
+We would like to define stack operators as `Stack ⇒ Result` functions. To be
+able to use them within some `workflow`, we need to lift them into the monad.
+
+```scala
+def command(f: Stack ⇒ Result) = State[Unit, Result](st ⇒ ({}, right[String].bind(f)(st)))
+```
+
+With `command` helper we can now define a bunch of commands, working with stack.
+
+```scala
+def put(value: Int) = command {
+  case stack ⇒ Right(value :: stack)
+}
+
+def dup = command {
+  case head :: tail ⇒ Right(head :: head :: tail)
+  case _ ⇒ Left("Stack underflow while executing `dup`")
+}
+
+def rot = command {
+  case a :: b :: stack ⇒ Right(b :: a :: stack)
+  case _ ⇒ Left("Stack underflow while executing `rot`")
+}
+
+def sub = command {
+  case a :: b :: stack ⇒ Right((b - a) :: stack)
+  case _ ⇒ Left("Stack underflow while executing `sub`")
+}
+```
+Now, working inside `stackLang` context we can write programs as sequences of
+stack commands and execute them to get modified state of the stack.
+
+```scala
+context(stackLang) {
+  val programA = $ { put(5); dup; put(7); rot; sub }
+  execute(programA) should equal(Right(List(2, 5)))
+
+  val programB = $ { put(5); dup; sub; rot; dup }
+  execute(programB) should equal(Left("Stack underflow while executing `rot`"))
+}
+```
+
 ### Point-free notation
 If you're familiar with [SKI-calculus](http://en.wikipedia.org/wiki/SKI_combinator_calculus),
-you might notice, that `pure` and `app` methods of `function[R]` idiom instance 
+you might notice, that `point` and `app` methods of `function[R]` workflow 
 are in fact `K` and `S` combinators. This means that you can construct any
 closed lambda-term (in other words, any function) with just those two methods.
 
 For instance, here's how you can define `I`-combinator (the identity function):
+
 ```scala
 // I = S K K
-def id[T] = function[T].app(function[T ⇒ T].pure)(function[T].pure)
+def id[T] = function[T].app(function[T ⇒ T].point)(function[T].point)
 ```
 
 Or `B`-combinator (Scalas `Function.compose` method or Haskells `(.)`):
+
 ```scala
 // B = S (K S) K
-def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].pure(function[C].app[A, B]))(function[C].pure)
+def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].point(function[C].app[A, B]))(function[C].point)
 // More consicely with map
-def b[A, B, C] = function[A ⇒ B].map(function[C].app[A, B])(function[C].pure)
+def b[A, B, C] = function[A ⇒ B].map(function[C].app[A, B])(function[C].point)
 ```
 
 Aside from mind-wrenching examples like that, there's actually a useful
-application for this idiom instance — it can be used in point-free notation,
+application for these workflows — they can be used in point-free notation,
 i.e. for constructing complex functions without specifying function arguments.
 
 Point-free notation support is rather limited in Scala, compared to Haskell,
 but some things still could be done. Here are some examples to get you inspired.
 
 ```scala
-idiom(function[Char]) {
+context(function[Char]) {
   val isLetter: Char ⇒ Boolean = _.isLetter
   val isDigit:  Char ⇒ Boolean = _.isDigit
 
@@ -479,7 +491,7 @@ idiom(function[Char]) {
 Scalas `Function.compose` and `Function.andThen` also come in handy.
 
 ```scala
-idiom(function[Double]) {
+context(function[Double]) {
   val sqrt: Double ⇒ Double = x ⇒ math.sqrt(x)
   val sqr:  Double ⇒ Double = x ⇒ x * x
   val log:  Double ⇒ Double = x ⇒ math.log(x)
@@ -502,5 +514,5 @@ Contributions
 -------------
 This project is still very experimental and comments and suggestions are highly
 appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
-[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](https://github.com/aztek/scala-idioms/issues/new)
+[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
 here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
