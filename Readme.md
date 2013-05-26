@@ -9,8 +9,23 @@ that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/o
 
 ![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
 
-Quick start
------------
+Contents
+--------
+*   [Quick start](#quick-start)
+*   [What is workflow?](#what-is)
+*   [Hierarchy of workflows](#hierarchy)
+*   [Rules of rewriting](#rewriting)
+*   [Usage](#usage)
+*   [Compound workflows](#compose)
+*   [Some examples](#examples)
+    *   [Evaluator for a language of expressions](#eval)
+    *   [Functional reactive programming](#frp)
+    *   [Monadic interpreter for stack programming language](#stack-lang)
+    *   [Point-free notation](#point-free)
+*   [Contributions](#contributions)
+
+<h2 id="quick-start">Quick start</h2>
+
 Import `workflow` interface.
 
 ```scala
@@ -93,8 +108,8 @@ workflow[Option] {
 Just like in `context`, you can pass either type constructor or workflow
 object.
 
-What is workflow?
------------------
+<h2 id="what-is">What is workflow?</h2>
+
 The goal of `scala-workflow` is to provide boilerplate-free syntax for
 computations with effects, encoded with monads and idioms. _Workflow_
 abstracts the concept of computation in effectful context.
@@ -110,8 +125,8 @@ now, however, only literals, function applications and `val` definitions are
 supported. But development of the project is still in progress and you are very
 welcome to contribute.
 
-Hierarchy of workflows
-----------------------
+<h2 id="hierarchy">Hierarchy of workflows</h2>
+
 The hierarchy of workflows is built around an empty `Workflow[F[_]]` trait and
 several derived traits, that add methods. So far there are four of them:
 
@@ -180,8 +195,8 @@ produce `point` application.
 Nonetheless, using `Idiom` or `Monad` might be convenient, because they have
 some of the methods already implemented.
 
-How does it work?
------------------
+<h2 id="rewriting">Rules of rewriting</h2>
+
 Current implementation uses untyped macros and takes untyped Scala AST as an
 argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
 starting with the most nested subexpressions) and find, which of them
@@ -217,8 +232,8 @@ option.app(
 Special analysis takes care of dependencies between lifted values to be sure to
 produce `bind` instead of `app` where needed.
 
-Syntax of workflows
--------------------
+<h2 id="usage">Usage</h2>
+
 Workflow context is defined with `context` macro that either takes a workflow
 instance as an argument, or a type constructor `F[_]`, such that there is some
 workflow instance defined somewhere in the implicits scope.
@@ -262,8 +277,8 @@ imported, you get access to them all. Alternatively, you can import just the
 macros `import workflow.{context, workflow, $}` and access workflow instances
 from `Functor`, `SemiIdiom`, `Idiom` and `Monad` objects.
 
-Composition of workflows
-------------------------
+<h2 id="compose">Compound workflows</h2>
+
 Functors, semi-idioms and idioms are all composable, monads and semi-monads are
 not. There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
 and `IdiomCompose` correspondingly) that allow you, say, having instances of
@@ -286,9 +301,10 @@ Currently, you can only combine workflows using terms, but not types (i.e. that
 would be really cool to be able to write `workflow[List $ Option]`, but that
 feature is not supported yet).
 
-Some examples of effectful computations
----------------------------------------
-### Evaluator for a language of expressions
+<h2 id="examples">Some examples</h2>
+
+<h3 id="eval">Evaluator for a language of expressions</h3>
+
 McBride and Patterson's paper describes a simple evaluator for a language of
 expressions. Following that examples, here's how it would look like here.
 
@@ -337,7 +353,8 @@ def eval: Expr ⇒ Env ⇒ Option[Int] =
   }
 ```
 
-### Functional reactive programming
+<h3 id="frp">Functional reactive programming</h3>
+
 `scala-workflow` can be used as syntactic sugar for external libraries and
 programming paradigms. In this example, a very simple version of [Functional
 reactive programming](http://en.wikipedia.org/wiki/Functional_reactive_programming)
@@ -389,7 +406,8 @@ context(frp) {
 }
 ```
 
-### Monadic interpreter for stack programming language
+<h3 id="stack-lang">Monadic interpreter for stack programming language</h3>
+
 If you enjoy embedding monadic domain-specific languages in your Scala programs,
 you might like syntactical perks `scala-workflow` could bring. Consider a
 little embedded stack programming language.
@@ -455,7 +473,8 @@ context(stackLang) {
 }
 ```
 
-### Point-free notation
+<h3 id="point-free">Point-free notation</h3>
+
 If you're familiar with [SKI-calculus](http://en.wikipedia.org/wiki/SKI_combinator_calculus),
 you might notice, that `point` and `app` methods of `function[R]` workflow 
 are in fact `K` and `S` combinators. This means that you can construct any
@@ -519,8 +538,8 @@ context(function[Double]) {
 }
 ```
 
-Contributions
--------------
+<h2 id="contributions">Contributions</h2>
+
 This project is still very experimental and comments and suggestions are highly
 appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
 [by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
