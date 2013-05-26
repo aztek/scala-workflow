@@ -187,16 +187,18 @@ trait Monad[F[_]] extends Idiom[F] with Binding[F] {
 ```
 
 Note, that `Functor`/`Idiom`/`Monad` is merely a shortcut. You are not required
-to implement any of it particularly to be able to use workflow contexts. Some
-of other syntax extensions, like `for`/`do`-comprehension or idiom brackets,
-expect you to have complete monad/idiom instance, even though none of them
-produce `point` application. 
-
-Nonetheless, using `Idiom` or `Monad` might be convenient, because they have
-some of the methods already implemented.
+to implement any of it particularly to be able to use workflow contexts. They
+are mostly convenient, because have some of the methods already implemented and
+can be [composable](#compound-workflows).
 
 Rules of rewriting
 ------------------
+One important difference of `scala-workflow` from similar syntactic extension
+is that it always require the least powerful interface of a workflow instance
+for generated code. That means, that you can have idiom brackets kind of syntax
+for functors (such as `Map[A, B]`) and `for`/`do`-notation kind of syntax for
+monads without `return` (they are called `SemiMonad` here).  
+
 Current implementation uses untyped macros and takes untyped Scala AST as an
 argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
 starting with the most nested subexpressions) and find, which of them
@@ -231,6 +233,22 @@ option.app(
 
 Special analysis takes care of dependencies between lifted values to be sure to
 produce `bind` instead of `app` where needed.
+
+Here are some of other examples of code rewriting within `Option` context.
+
+$(42)                          | option.point(42)
+------------------------------ | -
+$(Some(42) + 1)                | option.map((x$1: Int) ⇒ x$1 + 1)(Some(42))
+------------------------------ | -
+$(Some(2) * Some(3))           | option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ x$1 * x$2)(Some(2)))(Some(3))
+------------------------------ | -
+$(divide(1, 2))                | divide(1, 2)
+------------------------------ | -
+$(divide(Some(1.5), 2))        | option.bind((x$1: Double) ⇒ divide(x$1, 2))(Some(1.5))
+------------------------------ | -
+$(divide(Some(1.5), Some(2)))  | option.bind((x$1: Double) ⇒ option.bind((x$2: Int) ⇒ divide(x$1, x$2))(Some(2)))(Some(1.5))
+------------------------------ | -
+$(divide(Some(1.5), 2) + 1)    | option.bind((x$1: Double) ⇒ option.map((x$2: Double) ⇒ x$2 + 1)(divide(x$1, 2)))(Some(1.5))
 
 Usage
 -----

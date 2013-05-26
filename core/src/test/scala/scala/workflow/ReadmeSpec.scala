@@ -10,6 +10,8 @@ import org.scalatest.matchers.ShouldMatchers
 class ReadmeSpec extends FlatSpec with ShouldMatchers {
   behavior of "Examples from Readme file"
 
+  def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
+
   "Examples from 'Quick start' section" should "be correct" in {
     context[Option] {
       $(Some(42) + 1) should equal (Some(43))
@@ -36,7 +38,6 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       nonletters("R2-D2") should equal (3)
     }
 
-    def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
     context[Option] {
       $ {
         val x = divide(1, 2)
@@ -52,9 +53,17 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     } should equal (Some(16))
   }
 
-  "Example from 'How does it work?' section" should "be correct" in {
+  "Example from 'Rules of rewriting' section" should "be correct" in {
     context(option) {
       $(2 * 3 + Some(10) * Some(5)) should equal (option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5)))
+
+      $(42) should equal (option.point(42))
+      $(Some(42) + 1) should equal (option.map((x$1: Int) ⇒ x$1 + 1)(Some(42)))
+      $(Some(2) * Some(3)) should equal (option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ x$1 * x$2)(Some(2)))(Some(3)))
+      $(divide(1.5, 2)) should equal (divide(1.5, 2))
+      $(divide(Some(1.5), 2)) should equal (option.bind((x$1: Double) ⇒ divide(x$1, 2))(Some(1.5)))
+      $(divide(Some(1.5), Some(2))) should equal (option.bind((x$1: Double) ⇒ option.bind((x$2: Int) ⇒ divide(x$1, x$2))(Some(2)))(Some(1.5)))
+      $(divide(Some(1.5), 2) + 1) should equal (option.bind((x$1: Double) ⇒ option.map((x$2: Double) ⇒ x$2 + 1)(divide(x$1, 2)))(Some(1.5)))
     }
   }
 
