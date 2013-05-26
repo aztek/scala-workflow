@@ -4,25 +4,29 @@ Scala workflow
 in Scala with 2.11 macros, resembling _`for`-comprehension_ and some enhanced
 version of _idiom brackets_.
 
-`scala-workflow` requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
+`scala-workflow` only requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
+
+This project is very experimental and your comments and suggestions are highly
+appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
+[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
+here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
 
 ![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
 
 Contents
 --------
 *   [Quick start](#quick-start)
-*   [What is workflow?](#what-is-workflow)
-*   [Hierarchy of workflows](#hierarchy-of-workflows)
-*   [Rules of rewriting](#rules-of-rewriting)
-*   [Usage](#usage)
-*   [Compound workflows](#compound-workflows)
-*   [Some examples](#some-examples)
+*   [Workflows](#workflows)
+    *   [Hierarchy of workflows](#hierarchy-of-workflows)
+    *   [Rewriting rules](#rewriting-rules)
+    *   [Context definition](#context-definition)
+    *   [Composing workflows](#composing-workflows)
+*   [Examples](#examples)
     *   [Evaluator for a language of expressions](#evaluator-for-a-language-of-expressions)
     *   [Functional reactive programming](#functional-reactive-programming)
     *   [Monadic interpreter for stack programming language](#monadic-interpreter-for-stack-programming-language)
     *   [Point-free notation](#point-free-notation)
-*   [Contributions](#contributions)
 
 Quick start
 -----------
@@ -108,25 +112,22 @@ workflow[Option] {
 Just like in `context`, you can pass either type constructor or workflow
 object.
 
-What is workflow?
------------------
+Workflows
+---------
 The goal of `scala-workflow` is to provide boilerplate-free syntax for
 computations with effects, encoded with monads and idioms. _Workflow_
 abstracts the concept of computation in effectful context.
 
 Instances of `Workflow` trait provide methods, that are used for desugaring
 code in correspondent effectful contexts. The more methods an instance has,
-the more powerful it is (in the same sense as monads are more powerful than
-idioms and those are more powerful than functors), and the richer
-language features they can be applied to.
+the more powerful it is, and the richer language features can be used.
 
 The ultimate goal is to support the whole set of Scala language features. For
 now, however, only literals, function applications and `val` definitions are
 supported. But development of the project is still in progress and you are very
 welcome to contribute.
 
-Hierarchy of workflows
-----------------------
+### Hierarchy of workflows
 The hierarchy of workflows is built around an empty `Workflow[F[_]]` trait and
 several derived traits, that add methods. So far there are four of them:
 
@@ -191,8 +192,7 @@ to implement any of it particularly to be able to use workflow contexts. They
 are mostly convenient, because have some of the methods already implemented and
 can be [composable](#compound-workflows).
 
-Rules of rewriting
-------------------
+### Rewriting rules
 One important difference of `scala-workflow` from similar syntactic extension
 is that it always require the least powerful interface of a workflow instance
 for generated code. That means, that you can have idiom brackets kind of syntax
@@ -246,8 +246,7 @@ Inside the `$`                  | Compiled code
 `$(divide(Some(1.5), Some(2)))` | `option.bind((x$1: Double) ⇒ option.bind((x$2: Int) ⇒ divide(x$1, x$2))(Some(2)))(Some(1.5))`
 `$(divide(Some(1.5), 2) + 1)`   | `option.bind((x$1: Double) ⇒ option.map((x$2: Double) ⇒ x$2 + 1)(divide(x$1, 2)))(Some(1.5))`
 
-Usage
------
+## Context definition
 Workflow context is defined with `context` macro that either takes a workflow
 instance as an argument, or a type constructor `F[_]`, such that there is some
 workflow instance defined somewhere in the implicits scope.
@@ -291,8 +290,7 @@ imported, you get access to them all. Alternatively, you can import just the
 macros `import workflow.{context, workflow, $}` and access workflow instances
 from `Functor`, `SemiIdiom`, `Idiom` and `Monad` objects.
 
-Compound workflows
-------------------
+### Composing workflows
 Functors, semi-idioms and idioms are all composable, monads and semi-monads are
 not. There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
 and `IdiomCompose` correspondingly) that allow you, say, having instances of
@@ -315,8 +313,8 @@ Currently, you can only combine workflows using terms, but not types (i.e. that
 would be really cool to be able to write `workflow[List $ Option]`, but that
 feature is not supported yet).
 
-Some examples
--------------
+Examples
+--------
 ### Evaluator for a language of expressions
 McBride and Patterson's paper describes a simple evaluator for a language of
 expressions. Following that examples, here's how it would look like here.
@@ -547,10 +545,3 @@ context(function[Double]) {
   val g = log andThen $((sqr - 1) / (sqr + 1))
 }
 ```
-
-Contributions
--------------
-This project is still very experimental and comments and suggestions are highly
-appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
-[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
-here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
