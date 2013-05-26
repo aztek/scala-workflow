@@ -246,7 +246,7 @@ Inside the `$`                  | Compiled code
 `$(divide(Some(1.5), Some(2)))` | `option.bind((x$1: Double) ⇒ option.bind((x$2: Int) ⇒ divide(x$1, x$2))(Some(2)))(Some(1.5))`
 `$(divide(Some(1.5), 2) + 1)`   | `option.bind((x$1: Double) ⇒ option.map((x$2: Double) ⇒ x$2 + 1)(divide(x$1, 2)))(Some(1.5))`
 
-## Context definition
+### Context definition
 Workflow context is defined with `context` macro that either takes a workflow
 instance as an argument, or a type constructor `F[_]`, such that there is some
 workflow instance defined somewhere in the implicits scope.
