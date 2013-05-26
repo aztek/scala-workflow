@@ -4,7 +4,7 @@ Scala workflow
 in Scala with 2.11 macros, resembling _`for`-comprehension_ and some enhanced
 version of _idiom brackets_.
 
-`scala-workflow` is built around [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
+`scala-workflow` requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
 
 ![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
@@ -49,8 +49,9 @@ context(zipList) {
 ```
 
 There are numerous of `Workflow[F[_]]` objects you can find in `instances.scala`
-file. All of them are instances of _functors_, _applicative functors_,
-_monads_ and a couple of other intermediate structures.
+file. All of them are instances of _functors_, _applicative functors_ (also
+called _idioms_), _monads_ and a couple of other intermediate algebraic
+structures.
 
 ```scala
 context(map[String]) {
@@ -95,19 +96,19 @@ object.
 What is workflow?
 -----------------
 The goal of `scala-workflow` is to provide boilerplate-free syntax for
-computations with effects, encoded with monads and applicative functors.
-_Workflow_ abstracts the concept of effectful value.
+computations with effects, encoded with monads and idioms. _Workflow_
+abstracts the concept of computation in effectful context.
 
-Workflow instances provide methods, that are used for desugaring code
-in correspondent computational contexts. The more methods an instance has, the
-more powerful it is (in the same sense as monads are more powerful than
-applicatives and those are more powerful than functors), and the richer
+Instances of `Workflow` trait provide methods, that are used for desugaring
+code in correspondent effectful contexts. The more methods an instance has,
+the more powerful it is (in the same sense as monads are more powerful than
+idioms and those are more powerful than functors), and the richer
 language features they can be applied to.
 
 The ultimate goal is to support the whole set of Scala language features. For
 now, however, only literals, function applications and `val` definitions are
-supported. Still, `scala-workflow` is actively developed and you can expect
-new features soon.
+supported. But development of the project is still in progress and you are very
+welcome to contribute.
 
 Hierarchy of workflows
 ----------------------
@@ -205,7 +206,12 @@ handle that), so both arguments are lifted.
 Generated code will look like this.
 
 ```scala
-option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ 2 * 3 + x$1 * x$2)(Some(10)))(Some(5))
+option.app(
+  option.map(
+    (x$1: Int) ⇒ (x$2: Int) ⇒
+      2 * 3 + x$1 * x$2
+  )(Some(10))
+)(Some(5))
 ```
 
 Special analysis takes care of dependencies between lifted values to be sure to
@@ -264,11 +270,13 @@ and `IdiomCompose` correspondingly) that allow you, say, having instances of
 `Idiom[F]` and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either
 create `IdiomCompose` object directly with class constructor, or use `$` method
 of the class `Idiom`.
+
 ```scala
 context(list $ option) {
   $(List(Some(2), Some(3), None) * 10) should equal (List(Some(20), Some(30), None))
 }
 ```
+
 You can also combine workflows of different classes with the same syntax, the
 result workflow will implement the weaker interface of the two. For instance,
 `map[String] $ option` will implement `Functor`, because it's weaker than
@@ -433,6 +441,7 @@ def sub = command {
   case _ ⇒ Left("Stack underflow while executing `sub`")
 }
 ```
+
 Now, working inside `stackLang` context we can write programs as sequences of
 stack commands and execute them to get modified state of the stack.
 
