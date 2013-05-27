@@ -1,0 +1,145 @@
+package scala.workflow
+
+import language.higherKinds
+
+import concurrent.Future
+import concurrent.ExecutionContext.Implicits.global
+import util.Try
+
+trait FunctorInstances {
+  implicit def tupleL[T] = new Functor[({type λ[α] = (α, T)})#λ] {
+    def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (f(lhs), rhs) }
+  }
+
+  def tuple[T] = tupleL[T]
+
+  implicit def tupleR[T] = new Functor[({type λ[α] = (T, α)})#λ] {
+    def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (lhs, f(rhs)) }
+  }
+
+  def pair[T] = tupleR[T]
+
+  implicit def tuple3L[M, R] = new Functor[({type λ[α] = (α, M, R)})#λ] {
+    def map[A, B](f: A ⇒ B) = { case (lhs, mhs, rhs) ⇒ (f(lhs), mhs, rhs) }
+  }
+
+  implicit def tuple3M[L, R] = new Functor[({type λ[α] = (L, α, R)})#λ] {
+    def map[A, B](f: A ⇒ B) = { case (lhs, mhs, rhs) ⇒ (lhs, f(mhs), rhs) }
+  }
+
+  implicit def tuple3R[L, M] = new Functor[({type λ[α] = (L, M, α)})#λ] {
+    def map[A, B](f: A ⇒ B) = { case (lhs, mhs, rhs) ⇒ (lhs, mhs, f(rhs)) }
+  }
+
+  implicit def map[T] = new Functor[({type λ[α] = Map[T, α]})#λ] {
+    def map[A, B](f: A ⇒ B) = _ mapValues f
+  }
+}
+
+trait SemiIdiomInstances {
+  val zipList = new SemiIdiom[List] {
+    def map[A, B](f: A ⇒ B) = _ map f
+    def app[A, B](fs: List[A ⇒ B]) = _ zip fs map { case (a, f) ⇒ f(a) }
+  }
+}
+
+trait IdiomInstances {
+  val zipStream = new Idiom[Stream] {
+    def point[A](a: ⇒ A) = Stream.continually(a)
+    def app[A, B](fs: Stream[A ⇒ B]) = _ zip fs map { case (a, f) ⇒ f(a) }
+  }
+}
+
+trait MonadInstances {
+  implicit val option = new Monad[Option] {
+    def point[A](a: ⇒ A) = Option(a)
+    def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
+  }
+
+  implicit val list = new Monad[List] {
+    def point[A](a: ⇒ A) = List(a)
+    def bind[A, B](f: A ⇒ List[B]) = _ flatMap f
+  }
+
+  implicit val set = new Monad[Set] {
+    def point[A](a: ⇒ A) = Set(a)
+    def bind[A, B](f: A ⇒ Set[B]) = _ flatMap f
+  }
+
+  implicit val try_ = new Monad[Try] {
+    def point[A](a: ⇒ A) = Try(a)
+    def bind[A, B](f: A ⇒ Try[B]) = _ flatMap f
+  }
+
+  implicit val future = new Monad[Future] {
+    def point[A](a: ⇒ A) = Future(a)
+    def bind[A, B](f: A ⇒ Future[B]) = _ flatMap f
+  }
+
+  implicit val stream = new Monad[Stream] {
+    def point[A](a: ⇒ A) = Stream(a)
+    def bind[A, B](f: A ⇒ Stream[B]) = _ flatMap f
+  }
+
+  implicit def left[T] = new Monad[({type λ[α] = Either[α, T]})#λ] {
+    def point[A](a: ⇒ A) = Left(a)
+    def bind[A, B](f: A ⇒ Either[B, T]) = _.left flatMap f
+  }
+
+  implicit def right[T] = new Monad[({type λ[α] = Either[T, α]})#λ] {
+    def point[A](a: ⇒ A) = Right(a)
+    def bind[A, B](f: A ⇒ Either[T, B]) = _.right flatMap f
+  }
+
+  def either[T] = right[T]
+
+  implicit val id = new Monad[({type λ[α] = α})#λ] {
+    def point[A](a: ⇒ A) = a
+    def bind[A, B](f: A ⇒ B) = f
+  }
+
+  implicit def partialFunction[R] = new Monad[({type λ[α] = PartialFunction[R, α]})#λ] {
+    def point[A](a: ⇒ A) = { case _ ⇒ a }
+    def bind[A, B](f: A ⇒ PartialFunction[R, B]) = g ⇒ { case r if (g isDefinedAt r) && (f(g(r)) isDefinedAt r) ⇒ f(g(r))(r) }
+  }
+
+  implicit def function[R] = new Monad[({type λ[α] = R ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = _ ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ B) = g ⇒ r ⇒ f(g(r))(r)
+  }
+
+  implicit def function2[R, S] = new Monad[({type λ[α] = R ⇒ S ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ S ⇒ B) = g ⇒ r ⇒ s ⇒ f(g(r)(s))(r)(s)
+  }
+
+  implicit def function3[R, S, T] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ f(g(r)(s)(t))(r)(s)(t)
+  }
+
+  implicit def function4[R, S, T, U] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ f(g(r)(s)(t)(u))(r)(s)(t)(u)
+  }
+
+  implicit def function5[R, S, T, U, V] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ (_: V) ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ f(g(r)(s)(t)(u)(v))(r)(s)(t)(u)(v)
+  }
+
+  implicit def function6[R, S, T, U, V, W] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ α})#λ] {
+    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ (_: V) ⇒ (_: W) ⇒ a
+    def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
+  }
+
+  case class State[A, S](run: S ⇒ (A, S)) {
+    def result(s: S) = { val (result, _) = run(s); result }
+    def state(s: S)  = { val (_, state)  = run(s); state  }
+  }
+
+  implicit def state[S] = new Monad[({type λ[α] = State[α, S]})#λ] {
+    def point[A](a: ⇒ A) = State[A, S]((a, _))
+    def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
+  }
+}
