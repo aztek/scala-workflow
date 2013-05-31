@@ -161,8 +161,8 @@ Each method corresponds to a particular feature of workflow context.
   order. Example of an expression with lifted values that depend on each other:
   `$(divide(divide(1, 2), 3))` (with `divide` definition taken from "Quick start"
   section). Both `divide` calls are lifted, but we can only evaluate outmost
-  `divide` after the inner one has been evaluated. `app` cannot be used without
-  `map`, hence the inheritance.
+  `divide` after the inner one has been evaluated. Note, that `app` cannot be used
+  without `map`, hence the inheritance of the traits.
 
 - `bind` is used to desugar expressions with arbitrary many arbitrary dependent
   lifted values.
@@ -197,12 +197,12 @@ One important difference of `scala-workflow` from similar syntactic extension
 is that it always require the least powerful interface of a workflow instance
 for generated code. That means, that you can have idiom brackets kind of syntax
 for functors (such as `Map[A, B]`) and `for`/`do`-notation kind of syntax for
-monads without `return` (they are called `SemiMonad` here).  
+monads without `return` (they are called `SemiMonad`s here).  
 
 Current implementation uses untyped macros and takes untyped Scala AST as an
 argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
 starting with the most nested subexpressions) and find, which of them
-typechecks successfully and the result type corresponds to the type of the
+typechecks successfully with the result type corresponding to the type of the
 workflow. If those are found, they are being replaces with their unlifted
 counterparts, and the whole thing starts over again, until the whole expression
 typechecks correctly and we have a list of lifted values at hand.
@@ -309,15 +309,12 @@ result workflow will implement the weaker interface of the two. For instance,
 `map[String] $ option` will implement `Functor`, because it's weaker than
 `option`'s `Monad`.
 
-Currently, you can only combine workflows using terms, but not types (i.e. that
-would be really cool to be able to write `workflow[List $ Option]`, but that
-feature is not supported yet).
-
 Examples
 --------
 ### Evaluator for a language of expressions
-McBride and Patterson's paper describes a simple evaluator for a language of
-expressions. Following that examples, here's how it would look like here.
+[Original paper](http://strictlypositive.org/IdiomLite.pdf) about idiom brackets
+by McBride and Patterson describes a simple evaluator for a language of
+expressions. Following that example, here's how it would look like here.
 
 We start with the definition of abstract syntax tree of a language with
 integers, variables and a plus.
