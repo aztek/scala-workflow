@@ -7,11 +7,6 @@ version of _idiom brackets_.
 `scala-workflow` only requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
 
-This project is very experimental and your comments and suggestions are highly
-appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
-[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
-here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
-
 ![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
 
 Contents
@@ -27,6 +22,7 @@ Contents
     *   [Functional reactive programming](#functional-reactive-programming)
     *   [Monadic interpreter for stack programming language](#monadic-interpreter-for-stack-programming-language)
     *   [Point-free notation](#point-free-notation)
+*   [Disclaimer](#disclaimer)
 
 Quick start
 -----------
@@ -542,3 +538,10 @@ context(function[Double]) {
   val g = log andThen $((sqr - 1) / (sqr + 1))
 }
 ```
+
+Disclaimer
+----------
+This project is very experimental and your comments and suggestions are highly
+appreciated. Drop me a line [on twitter](http://twitter.com/aztek) or
+[by email](mailto:evgeny.kotelnikov@gmail.com), or [open an issue](./issues/new)
+here on GitHub. I'm also occasionally on #scala IRC channel on Freenode.
