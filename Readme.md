@@ -186,7 +186,7 @@ trait Monad[F[_]] extends Idiom[F] with Binding[F] {
 Note, that `Functor`/`Idiom`/`Monad` is merely a shortcut. You are not required
 to implement any of it particularly to be able to use workflow contexts. They
 are mostly convenient, because have some of the methods already implemented and
-can be [composable](#compound-workflows).
+can be [composable](#composing-workflows).
 
 ### Rewriting rules
 One important difference of `scala-workflow` from similar syntactic extension
