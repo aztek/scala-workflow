@@ -259,7 +259,7 @@ context(list) {
 }
 ```
 
-Macro `$` takes workflow context from the closest `workflow` block.
+Macro `$` takes workflow context from the closest `context` block.
 Alternatively, you can provide type constructor, whose workflow instance will
 be taken from the implicits scope.
 
