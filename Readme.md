@@ -232,15 +232,64 @@ produce `bind` instead of `app` where needed.
 
 Here are some of other examples of code rewriting within `Option` context.
 
-Inside the `$`                  | Compiled code
-                            --- | ---
-`$(42)`                         | `option.point(42)`
-`$(Some(42) + 1)`               | `option.map((x$1: Int) ⇒ x$1 + 1)(Some(42))`
-`$(Some(2) * Some(3))`          | `option.app(option.map((x$1: Int) ⇒ (x$2: Int) ⇒ x$1 * x$2)(Some(2)))(Some(3))`
-`$(divide(1, 2))`               | `divide(1, 2)`
-`$(divide(Some(1.5), 2))`       | `option.bind((x$1: Double) ⇒ divide(x$1, 2))(Some(1.5))`
-`$(divide(Some(1.5), Some(2)))` | `option.bind((x$1: Double) ⇒ option.bind((x$2: Int) ⇒ divide(x$1, x$2))(Some(2)))(Some(1.5))`
-`$(divide(Some(1.5), 2) + 1)`   | `option.bind((x$1: Double) ⇒ option.map((x$2: Double) ⇒ x$2 + 1)(divide(x$1, 2)))(Some(1.5))`
+<table>
+   <tr>
+      <th>Inside the <code>$</code></th>
+      <th>Compiled code</th>
+   </tr>
+   <tr>
+      <td><code>$(42)</code></td>
+      <td><pre>option.point(42)</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(Some(42) + 1)</code></td>
+      <td><pre>option.map(
+  (x$1: Int) ⇒
+    x$1 + 1
+)(Some(42))</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(Some(2) * Some(3))</code></td>
+      <td><pre>option.app(
+  option.map(
+    (x$1: Int) ⇒
+      (x$2: Int) ⇒
+        x$1 * x$2
+  )(Some(2))
+)(Some(3))</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(divide(1, 2))</code></td>
+      <td><pre>divide(1, 2)</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(divide(Some(1.5), 2))</code></td>
+      <td><pre>option.bind(
+  (x$1: Double) ⇒
+    divide(x$1, 2)
+)(Some(1.5))</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(divide(Some(1.5), Some(2)))</code></td>
+      <td><pre>option.bind(
+  (x$1: Double) ⇒
+    option.bind(
+      (x$2: Int) ⇒
+        divide(x$1, x$2)
+    )(Some(2))
+)(Some(1.5))</pre></td>
+   </tr>
+   <tr>
+      <td><code>$(divide(Some(1.5), 2) + 1)</code></td>
+      <td><pre>option.bind(
+  (x$1: Double) ⇒
+    option.map(
+      (x$2: Double) ⇒
+        x$2 + 1
+    )(divide(x$1, 2))
+)(Some(1.5))</pre></td>
+   </tr>
+</table>
 
 ### Context definition
 Workflow context is defined with `context` macro that either takes a workflow
