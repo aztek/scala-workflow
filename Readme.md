@@ -236,10 +236,12 @@ Here are some of other examples of code rewriting within `Option` context.
    <tr>
       <th>Inside the <code>$</code></th>
       <th>Compiled code</th>
+      <th><code>for</code>-counterpart</th>
    </tr>
    <tr>
       <td><code>$(42)</code></td>
       <td><pre>option.point(42)</pre></td>
+      <td><pre>Some(42)</pre></th>
    </tr>
    <tr>
       <td><code>$(Some(42) + 1)</code></td>
@@ -247,6 +249,10 @@ Here are some of other examples of code rewriting within `Option` context.
   (x$1: Int) ⇒
     x$1 + 1
 )(Some(42))</pre></td>
+      <td><pre>for {
+  x ← Some(42)
+} yield x + 1</pre>      
+      </td>
    </tr>
    <tr>
       <td><code>$(Some(2) * Some(3))</code></td>
@@ -257,9 +263,15 @@ Here are some of other examples of code rewriting within `Option` context.
         x$1 * x$2
   )(Some(2))
 )(Some(3))</pre></td>
+      <td><pre>for {
+  x ← Some(2)
+  y ← Some(3)
+} yield x * y</pre>      
+      </td>
    </tr>
    <tr>
       <td><code>$(divide(1, 2))</code></td>
+      <td><pre>divide(1, 2)</pre></td>
       <td><pre>divide(1, 2)</pre></td>
    </tr>
    <tr>
@@ -268,6 +280,11 @@ Here are some of other examples of code rewriting within `Option` context.
   (x$1: Double) ⇒
     divide(x$1, 2)
 )(Some(1.5))</pre></td>
+      <td><pre>for {
+  x ← Some(1.5)
+  y ← divide(x, 2)
+} yield y</pre>      
+      </td>
    </tr>
    <tr>
       <td><code>$(divide(Some(1.5), Some(2)))</code></td>
@@ -278,6 +295,12 @@ Here are some of other examples of code rewriting within `Option` context.
         divide(x$1, x$2)
     )(Some(2))
 )(Some(1.5))</pre></td>
+      <td><pre>for {
+  x ← Some(1.5)
+  y ← Some(2)
+  z ← divide(x, y)
+} yield z</pre>      
+      </td>
    </tr>
    <tr>
       <td><code>$(divide(Some(1.5), 2) + 1)</code></td>
@@ -288,6 +311,11 @@ Here are some of other examples of code rewriting within `Option` context.
         x$2 + 1
     )(divide(x$1, 2))
 )(Some(1.5))</pre></td>
+      <td><pre>for {
+  x ← Some(1.5)
+  y ← divide(x, 2)
+} yield y + 1</pre>      
+      </td>
    </tr>
 </table>
 
