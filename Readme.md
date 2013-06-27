@@ -236,7 +236,7 @@ Here are some of other examples of code rewriting within `Option` context.
    <tr>
       <th>Inside the <code>$</code></th>
       <th>Compiled code</th>
-      <th><code>for</code>-counterpart</th>
+      <th>Pure Scala counterpart</th>
    </tr>
    <tr>
       <td><code>$(42)</code></td>
@@ -316,6 +316,69 @@ Here are some of other examples of code rewriting within `Option` context.
   y ← divide(x, 2)
 } yield y + 1</pre>      
       </td>
+   </tr>
+   <tr>
+      <td><pre>$ {
+  val x = Some(10)
+  x + 2
+}</pre></td>
+      <td><pre>option.map(
+  (x$1: Int) ⇒
+    x$1 + 2
+)(Some(10))</pre></td>
+      <td><pre>for {
+  x ← Some(10)
+} yield x + 2</pre></td>
+   </tr>
+   <tr>
+      <td><pre>$ {
+  val x = Some(10)
+  val y = Some(5)
+  x + y
+}</pre></td>
+      <td><pre>option.bind(
+  (x$1: Int) ⇒
+    option.map(
+      (x$2: Int) ⇒
+        x$1 + x$2
+    )(Some(5))
+)(Some(10))</pre></td>
+      <td><pre>for {
+  x ← Some(10)
+  y ← Some(5)
+} yield x + y</pre></td>
+   </tr>
+   <tr>
+      <td><pre>$ {
+  val x = Some(10)
+  val y = x − 3
+  x * y
+}</pre></td>
+      <td><pre>option.map(
+  (x$1: Int) ⇒
+    val y = x$1 − 3
+    x$1 * y
+)(Some(10))</pre></td>
+      <td><pre>for {
+  x ← Some(10)
+  y = x - 3
+} yield x * y</pre></td>
+   </tr>
+   <tr>
+      <td><pre>$(2 + {
+  val x = Some(10)
+  x * 2
+})</pre></td>
+      <td><pre>option.map(
+  (x$1: Int) ⇒
+    2 + x$1
+)(option.map(
+  (x$2: Int) ⇒
+    x$2 * 2
+)(Some(10)))</pre></td>
+      <td><pre>2 + (for {
+  x ← Some(10)
+} yield x * 2)</pre></td>
    </tr>
 </table>
 
