@@ -7,7 +7,7 @@ version of _idiom brackets_.
 `scala-workflow` only requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
 
-![Travis CI Status](https://api.travis-ci.org/aztek/scala-idioms.png)
+![Travis CI Status](https://api.travis-ci.org/aztek/scala-workflow.png)
 
 Contents
 --------
@@ -85,6 +85,7 @@ You can pass complex blocks of code to `$`.
 
 ```scala
 def divide(x: Double, y: Double) = if (y == 0) None else Some(x / y)
+
 context[Option] {
   $ {
     val x = divide(1, 2)
@@ -125,7 +126,7 @@ welcome to contribute.
 
 ### Hierarchy of workflows
 The hierarchy of workflows is built around an empty `Workflow[F[_]]` trait and
-several derived traits, that add methods. So far there are four of them:
+several derived traits, that add methods to it. So far there are four of them:
 
 ```scala
 trait Pointing[F[_]] extends Workflow[F] {
@@ -149,10 +150,10 @@ Each method corresponds to a particular feature of workflow context.
 - `point` allows to put pure value inside the workflow. It is only generated
   when you call `$(a)` for some pure `a`.
 
-- `map` is used to map over one lifted value in the expression. This is the
+- `map` is used to map over one lifted value in an expression. This is the
   same `map` you can find in Scalas `List`, `Option` and other classes.  
 
-- `app` is used to map over more that one independently lifted values within the
+- `app` is used to map over more that one independently lifted values within a
   context. "Independently" means that you can evaluate lifted arguments in any
   order. Example of an expression with lifted values that depend on each other:
   `$(divide(divide(1, 2), 3))` (with `divide` definition taken from "Quick start"
@@ -186,7 +187,7 @@ trait Monad[F[_]] extends Idiom[F] with Binding[F] {
 Note, that `Functor`/`Idiom`/`Monad` is merely a shortcut. You are not required
 to implement any of it particularly to be able to use workflow contexts. They
 are mostly convenient, because have some of the methods already implemented and
-can be [composable](#composing-workflows).
+can be [composed](#composing-workflows).
 
 ### Rewriting rules
 One important difference of `scala-workflow` from similar syntactic extension
@@ -199,9 +200,9 @@ Current implementation uses untyped macros and takes untyped Scala AST as an
 argument. Then we start by eagerly typechecking all the subexpressions (i.e.,
 starting with the most nested subexpressions) and find, which of them
 typechecks successfully with the result type corresponding to the type of the
-workflow. If those are found, they are being replaces with their unlifted
+workflow. If those are found, they are being replaces with their non-lifted
 counterparts, and the whole thing starts over again, until the whole expression
-typechecks correctly and we have a list of lifted values at hand.
+typechecks correctly and there is a list of lifted values at hand.
 
 Consider the example below.
 
@@ -235,7 +236,7 @@ Here are some of other examples of code rewriting within `Option` context.
 <table>
    <tr>
       <th>Inside the <code>$</code></th>
-      <th>Compiled code</th>
+      <th>Generated code</th>
       <th>Pure Scala counterpart</th>
    </tr>
    <tr>
@@ -422,13 +423,13 @@ workflow(list) { List(2, 5) * List(3, 7) }
 There are plenty of built-in workflow instances in traits `FunctorInstances`,
 `SemiIdiomInstances`, `IdiomInstances` and `MonadInstances`. They are all
 mixed to the package object of `scala.workflow`, so once you have `workflow._`
-imported, you get access to them all. Alternatively, you can import just the
+imported, you get access to all of them. Alternatively, you can import just the
 macros `import workflow.{context, workflow, $}` and access workflow instances
 from `Functor`, `SemiIdiom`, `Idiom` and `Monad` objects.
 
 ### Composing workflows
-Functors, semi-idioms and idioms are all composable, monads and semi-monads are
-not. There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
+Functors, semi-idioms and idioms can be composed, monads and semi-monads can not.
+There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
 and `IdiomCompose` correspondingly) that allow you, say, having instances of
 `Idiom[F]` and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either
 create `IdiomCompose` object directly with class constructor, or use `$` method
@@ -442,15 +443,16 @@ context(list $ option) {
 
 You can also combine workflows of different classes with the same syntax, the
 result workflow will implement the weaker interface of the two. For instance,
-`map[String] $ option` will implement `Functor`, because it's weaker than
-`option`'s `Monad`.
+`map[String] $ option` will implement `Functor`, because `map`s `Functor` is
+weaker than `option`'s `Monad`.
 
 Examples
 --------
 ### Evaluator for a language of expressions
-[Original paper](http://strictlypositive.org/IdiomLite.pdf) about idiom brackets
-by McBride and Patterson describes a simple evaluator for a language of
-expressions. Following that example, here's how it would look like here.
+[Original paper](http://strictlypositive.org/IdiomLite.pdf) by McBride and
+Patterson, that introduced idiom brackets, describes a simple evaluator for a
+language of expressions. Following that example, here's how it would look like
+here.
 
 We start with the definition of abstract syntax tree of a language with
 integers, variables and a plus.
@@ -554,7 +556,7 @@ If you enjoy embedding monadic domain-specific languages in your Scala programs,
 you might like syntactical perks `scala-workflow` could bring. Consider a
 little embedded stack programming language.
 
-We represent stack as a regular List, and the result of a program, that
+We represent stack as a regular `List`, and the result of a program, that
 manipulates with a stack, as either a modified stack or an error message
 (such as "stack underflow").
 
