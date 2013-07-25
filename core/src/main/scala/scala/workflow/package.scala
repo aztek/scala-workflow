@@ -2,8 +2,8 @@ package scala
 
 import language.experimental.macros
 import language.higherKinds
-
-import scala.reflect.macros.{TypecheckException, Context}
+import reflect.macros.{TypecheckException, Context}
+import util.{Failure, Success}
 
 package object workflow extends FunctorInstances with SemiIdiomInstances with IdiomInstances with MonadInstances {
   def context[F[_]](code: _): _ = macro contextImpl
@@ -158,6 +158,9 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       def enter = new Scope(materialized :+ Nil, Nil :: frames)
       def leave = new Scope(materialized.init, frames.tail)
       def local = materialized.flatten ++ frames.flatten
+      def wrapping(tree: Tree) = local.foldLeft(tree) {
+        case (expr, bind) ⇒ q"{ val ${bind.name}: ${bind.tpt} = ???; $expr }"
+      }
     }
     object Scope {
       val empty = new Scope(List(Nil), List(Nil))
@@ -170,26 +173,18 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
       private def mergeFrames(frames: List[List[Frame]]) = frames.map(_.head).flatten.distinct :: frames.head.tail
     }
 
-    def typeCheck(tree: Tree, scope: Scope): Option[Tree] = {
-      def inScope(tree: Tree) = scope.local.foldLeft(tree) {
-        case (expr, bind) ⇒ q"{ val ${bind.name}: ${bind.tpt} = ???; $expr }"
-      }
-      try {
-        Some(c.typeCheck(inScope(tree.duplicate)))
-      } catch {
-        case e: TypecheckException if e.msg contains "follow this method with `_'" ⇒ Some(EmptyTree)
-        case e: TypecheckException if e.msg contains "missing arguments for constructor" ⇒
-          try {
-            Some(c.typeCheck(inScope(q"(${tree.duplicate})(_)")))
-          } catch {
-            case e: TypecheckException if !(e.msg contains "too many arguments for constructor") ⇒ Some(EmptyTree)
-            case e: Exception ⇒ None
+    def typeCheck(tree: Tree, scope: Scope): util.Try[Tree] =
+      util.Try(c.typeCheck(scope wrapping tree.duplicate)) recoverWith {
+        case e: TypecheckException
+          if e.msg.contains("follow this method with `_'") || e.msg.contains("ambiguous reference") ||
+            (e.msg.contains("package") && e.msg.contains("is not a value")) ⇒ Success(EmptyTree)
+        case e: TypecheckException
+          if e.msg.contains("missing arguments for constructor") ⇒
+          util.Try(c.typeCheck(scope wrapping q"(${tree.duplicate})(_)")) recover {
+            case e: TypecheckException
+              if !e.msg.contains("too many arguments for constructor") ⇒ EmptyTree
           }
-        case e: TypecheckException if e.msg contains "ambiguous reference" ⇒ Some(EmptyTree)
-        case e: TypecheckException if (e.msg contains "package") && (e.msg contains "is not a value") ⇒ Some(EmptyTree)
-        case e: Exception ⇒ None
       }
-    }
 
     /* This whole function stinks. It's long, unreliable and some looks redundant.
      * TODO: Obviously need to refactor it at some point */
@@ -276,7 +271,7 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
     def extractBinds(scope: Scope, expr: Tree) =
       typeCheck(expr, scope) match {
-        case Some(tpt) ⇒
+        case Success(tpt) ⇒
           resolveLiftedType(tpt.tpe) match {
             case Some(tpe) ⇒
               val name = TermName(c.freshName("arg$"))
@@ -285,7 +280,13 @@ package object workflow extends FunctorInstances with SemiIdiomInstances with Id
 
             case None ⇒ (scope, expr)
           }
-        case None ⇒ rewrite(scope)(expr)
+        case Failure(e) ⇒
+          val binds = scope.materialized.flatten map {
+            case Bind(name, _, value) ⇒ s"   $name = $value"
+          }
+          val message = s"Type error during rewriting of expression within $workflow context"
+          val bindsList = if (binds.isEmpty) "" else s" where${binds mkString ("\n\n", "\n", "\n\n")}"
+          c.abort(c.enclosingPosition, s"${e.getMessage}\n\n   $expr\n\n$bindsList$message")
       }
 
     def lambda(bind: Bind): Tree ⇒ Tree = {
