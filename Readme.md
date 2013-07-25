@@ -233,6 +233,7 @@ produce `bind` instead of `app` where needed.
 
 Here are some of other examples of code rewriting within `Option` context.
 
+#### Simple expressions
 <table>
    <tr>
       <th>Inside the <code>$</code></th>
@@ -317,6 +318,15 @@ Here are some of other examples of code rewriting within `Option` context.
   y ← divide(x, 2)
 } yield y + 1</pre>      
       </td>
+   </tr>
+</table>
+
+#### Blocks of code
+<table>
+   <tr>
+      <th>Inside the <code>$</code></th>
+      <th>Generated code</th>
+      <th>Pure Scala counterpart</th>
    </tr>
    <tr>
       <td><pre>$ {
