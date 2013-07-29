@@ -50,7 +50,7 @@ trait IdiomInstances {
   }
 }
 
-trait MonadInstances {
+trait MonadInstances extends Auxiliary {
   implicit val option = new Monad[Option] {
     def point[A](a: ⇒ A) = Option(a)
     def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
@@ -133,13 +133,18 @@ trait MonadInstances {
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
   }
 
-  case class State[A, S](run: S ⇒ (A, S)) {
-    def result(s: S) = { val (result, _) = run(s); result }
-    def state(s: S)  = { val (_, state)  = run(s); state  }
-  }
-
   implicit def state[S] = new Monad[({type λ[α] = State[α, S]})#λ] {
     def point[A](a: ⇒ A) = State[A, S]((a, _))
     def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
+  }
+
+  implicit def writer[O : Monoid] = new Monad[({type λ[α] = Writer[α, O]})#λ] {
+    private val monoid = implicitly[Monoid[O]]
+    def point[A](a: ⇒ A) = Writer(a, monoid.empty)
+    def bind[A, B](f: A ⇒ Writer[B, O]) = {
+      case Writer(a, o) ⇒
+        val Writer(b, o2) = f(a)
+        Writer(b, monoid.append(o, o2))
+    }
   }
 }
