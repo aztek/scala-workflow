@@ -22,6 +22,7 @@ Contents
     *   [Functional reactive programming](#functional-reactive-programming)
     *   [Monadic interpreter for stack programming language](#monadic-interpreter-for-stack-programming-language)
     *   [Point-free notation](#point-free-notation)
+    *   [Purely functional logging](#purely-functional-logging)
 *   [Disclaimer](#disclaimer)
 
 Quick start
@@ -690,6 +691,92 @@ context(function[Double]) {
   val g = log andThen $((sqr - 1) / (sqr + 1))
 }
 ```
+
+### Purely functional logging
+It is no secret for a functional programmer that monads are extremely powerful.
+In fact, most of the features of imperative programming languages, that are
+usually implemented with variations of mutable state and uncontrolled side
+effects can be expressed with monads. However, functional purity often comes
+with the price of rather cumbersome syntax, compared to equivalent imperative
+constructs.
+
+`scala-workflow` tries to bridge this gap. In this example, `Writer` monad is
+used to allow snippets of imperative-looking code to mix pure computations and
+logging in purely functional manner.
+
+We start with a simple definition of a [semigroup](http://en.wikipedia.org/wiki/Semigroup)
+and a [monoid](http://en.wikipedia.org/wiki/Monoid).
+
+```scala
+trait Semigroup[A] {
+  def append: (A, A) ⇒ A
+}
+
+trait Monoid[A] extends Semigroup[A] {
+  def empty: A
+}
+```
+
+`Writer` monad represents computations, those results are accompanied with some
+accumulated output. The value, produced by such computations is represented
+with an auxiliary `Writer` class that contains the result and the output that
+is made a monoid instance to capture the notion of "accumulation" (semigroup
+would suffice just for accumulation, but we would also like to produce results
+with empty output, hence a monoid).
+
+```scala
+case class Writer[R, O : Monoid](result: R, output: O)
+```
+
+A log file is basically a list of log entries, so we model it as is.
+
+```scala
+case class Log(entries: List[String])
+```
+
+It is of course possible to define monoid instance for this class, because
+lists are themselves monoids.
+
+```scala
+implicit val logMonoid = new Monoid[Log] {
+  def empty = Log(Nil)
+  def append = {
+    case (Log(oldEntries), Log(newEntries)) ⇒ Log(oldEntries ++ newEntries)
+  }
+}
+```
+
+With this instance defined in the implicits scope we can now construct
+`writer[Log]` workflow. `log` function will lift log entry to `Writer` context.
+
+```scala
+def log(message: String) = Writer[Unit, Log]({}, new Log(List(message)))
+```
+
+Having a snippet of code wrapped in `workflow(writer[Log])`, we can intersperse
+pure computations with writing to a log, much like we would do with `log4j` or
+similar framework.
+
+```scala
+val Writer(result, logEntries) = workflow(writer[Log]) {
+  log("Lets define a variable")
+  val x = 2
+
+  log("And calculate a square of it")
+  val square = x * x
+
+  log("Also a cube and add them together")
+  val cube = x * x * x
+  val sum = square + cube
+
+  log("This is all so silly")
+  30 / 5
+}
+```
+
+The result of computation is now stored in `result` and the log is in
+`logEntries`. Note, that no side effects or mutable state whatsoever were
+involved in this example.
 
 Disclaimer
 ----------
