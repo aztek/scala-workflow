@@ -8,13 +8,13 @@ trait Auxiliary {
     def state(s: S)  = { val (_, state)  = run(s); state  }
   }
 
-  case class Writer[R, O](result: R, output: O)
+  case class Writer[R, O : Monoid](result: R, output: O)
 
-  trait SemiGroup[A] {
+  trait Semigroup[A] {
     def append: (A, A) ⇒ A
   }
 
-  trait Monoid[A] extends SemiGroup[A] {
+  trait Monoid[A] extends Semigroup[A] {
     def empty: A
   }
 }
