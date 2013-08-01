@@ -250,7 +250,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
       }
     }
 
-    def log(message: String) = Writer[Unit, Log]({}, new Log(List(message)))
+    def log(message: String) = Writer[Unit, Log]({}, Log(List(message)))
 
     val Writer(result, logEntries) = workflow(writer[Log]) {
       log("Lets define a variable")

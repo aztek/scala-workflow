@@ -750,7 +750,7 @@ With this instance defined in the implicits scope we can now construct
 `writer[Log]` workflow. `log` function will lift log entry to `Writer` context.
 
 ```scala
-def log(message: String) = Writer[Unit, Log]({}, new Log(List(message)))
+def log(message: String) = Writer[Unit, Log]({}, Log(List(message)))
 ```
 
 Having a snippet of code wrapped in `workflow(writer[Log])`, we can intersperse
