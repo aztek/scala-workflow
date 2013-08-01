@@ -147,4 +147,9 @@ trait MonadInstances extends Auxiliary {
         Writer(b, monoid.append(o, o2))
     }
   }
+
+  implicit def cont[R] = new Monad[({type λ[α] = Cont[R, α]})#λ] {
+    def point[A](a: ⇒ A) = Cont(_(a))
+    def bind[A, B](f: A ⇒ Cont[R, B]) = cont ⇒ Cont(g ⇒ cont.run(a ⇒ f(a).run(g)))
+  }
 }
