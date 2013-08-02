@@ -1,4 +1,4 @@
-Scala workflow ![Travis CI Status](https://api.travis-ci.org/aztek/scala-workflow.png)
+Scala workflow [![Travis CI Status](https://api.travis-ci.org/aztek/scala-workflow.png)](https://travis-ci.org/aztek/scala-workflow)
 ==============
 `scala-workflow` helps to nicely organize applicative and monadic computations
 in Scala with 2.11 macros, resembling _`for`-comprehension_ and some enhanced
