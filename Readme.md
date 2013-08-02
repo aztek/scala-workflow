@@ -1,4 +1,4 @@
-Scala workflow
+Scala workflow ![Travis CI Status](https://api.travis-ci.org/aztek/scala-workflow.png)
 ==============
 `scala-workflow` helps to nicely organize applicative and monadic computations
 in Scala with 2.11 macros, resembling _`for`-comprehension_ and some enhanced
@@ -6,8 +6,6 @@ version of _idiom brackets_.
 
 `scala-workflow` only requires [untyped macros](http://docs.scala-lang.org/overviews/macros/untypedmacros.html)
 that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/overviews/macros/paradise.html).
-
-![Travis CI Status](https://api.travis-ci.org/aztek/scala-workflow.png)
 
 Contents
 --------
