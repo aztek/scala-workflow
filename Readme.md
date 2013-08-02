@@ -778,6 +778,14 @@ The result of computation is now stored in `result` and the log is in
 `logEntries`. Note, that no side effects or mutable state whatsoever were
 involved in this example.
 
+```scala
+result should equal (6)
+logEntries should equal (Log(List("Lets define a variable",
+                                  "And calculate a square of it",
+                                  "Also a cube and add them together",
+                                  "This is all so silly")))
+```
+
 Disclaimer
 ----------
 This project is very experimental and your comments and suggestions are highly
