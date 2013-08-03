@@ -10,6 +10,8 @@ trait Auxiliary {
 
   case class Cont[R, A](run: (A ⇒ R) ⇒ R)
 
+  case class Reader[E, A](run: E ⇒ A)
+
   trait Semigroup[A] {
     def append: (A, A) ⇒ A
   }

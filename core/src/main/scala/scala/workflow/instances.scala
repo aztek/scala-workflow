@@ -148,6 +148,14 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
+  implicit def reader[E] = new Monad[({type λ[α] = Reader[E, α]})#λ] {
+    def point[A](a: ⇒ A) = Reader(_ ⇒ a)
+    def bind[A, B](f: A ⇒ Reader[E, B]) = {
+      case Reader(r) ⇒
+        Reader(e ⇒ f(r(e)).run(e))
+    }
+  }
+
   implicit def cont[R] = new Monad[({type λ[α] = Cont[R, α]})#λ] {
     def point[A](a: ⇒ A) = Cont(_(a))
     def bind[A, B](f: A ⇒ Cont[R, B]) = cont ⇒ Cont(g ⇒ cont.run(a ⇒ f(a).run(g)))
