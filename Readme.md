@@ -663,9 +663,10 @@ def b[A, B, C] = function[A ⇒ B].app(function[A ⇒ B].point(function[C].app[A
 def b[A, B, C] = function[A ⇒ B].map(function[C].app[A, B])(function[C].point)
 ```
 
-Aside from mind-wrenching examples like that, there's actually a useful
+Aside from mind-boggling examples like that, there's actually a useful
 application for these workflows — they can be used in point-free notation,
-i.e. for constructing complex functions without specifying function arguments.
+i.e. for construction of complex functions with no function arguments
+specified.
 
 Point-free notation support is rather limited in Scala, compared to Haskell,
 but some things still could be done. Here are some examples to get you inspired.
