@@ -727,7 +727,7 @@ trait Semigroup[A] {
 }
 
 trait Monoid[A] extends Semigroup[A] {
-  def empty: A
+  val unit: A
 }
 ```
 
@@ -753,7 +753,7 @@ lists are themselves monoids.
 
 ```scala
 implicit val logMonoid = new Monoid[Log] {
-  def empty = Log(Nil)
+  val unit = Log(Nil)
   def append = {
     case (Log(oldEntries), Log(newEntries)) ⇒ Log(oldEntries ++ newEntries)
   }

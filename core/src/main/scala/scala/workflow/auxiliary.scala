@@ -17,7 +17,7 @@ trait Auxiliary {
   }
 
   trait Monoid[A] extends Semigroup[A] {
-    def empty: A
+    val unit: A
   }
 
   case class Writer[R, O : Monoid](result: R, output: O)

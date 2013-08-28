@@ -140,7 +140,7 @@ trait MonadInstances extends Auxiliary {
 
   implicit def writer[O : Monoid] = new Monad[({type λ[α] = Writer[α, O]})#λ] {
     private val monoid = implicitly[Monoid[O]]
-    def point[A](a: ⇒ A) = Writer(a, monoid.empty)
+    def point[A](a: ⇒ A) = Writer(a, monoid.unit)
     def bind[A, B](f: A ⇒ Writer[B, O]) = {
       case Writer(a, o) ⇒
         val Writer(b, o2) = f(a)

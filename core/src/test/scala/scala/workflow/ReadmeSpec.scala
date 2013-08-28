@@ -244,7 +244,7 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     case class Log(entries: List[String])
 
     implicit val logMonoid = new Monoid[Log] {
-      def empty = Log(Nil)
+      val unit = Log(Nil)
       def append = {
         case (Log(oldEntries), Log(newEntries)) ⇒ Log(oldEntries ++ newEntries)
       }
