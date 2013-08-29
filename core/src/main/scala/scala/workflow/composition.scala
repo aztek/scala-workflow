@@ -2,16 +2,33 @@ package scala.workflow
 
 import language.higherKinds
 
-class FunctorCompose[F[_], G[_]](f: Functor[F], g: Functor[G]) extends Functor[({type λ[α] = F[G[α]]})#λ] {
-  def map[A, B](h: A ⇒ B) = f map (g map h)
+trait FunctorComposition[F[_]] { f: Functor[F] ⇒
+  def & [G[_]](g: Functor[G]) = new Functor[({type λ[α] = G[F[α]]})#λ] {
+    def map[A, B](h: A ⇒ B) = g map (f map h)
+  }
 }
 
-class SemiIdiomCompose[F[_], G[_]](f: SemiIdiom[F], g: SemiIdiom[G]) extends SemiIdiom[({type λ[α] = F[G[α]]})#λ] {
-  def map[A, B](h: A ⇒ B) = f map (g map h)
-  def app[A, B](h: F[G[A ⇒ B]]) = f app (f map (g.app[A, B] _))(h)
+trait SemiIdiomComposition[F[_]] { f: SemiIdiom[F] ⇒
+  def & [G[_]](g: SemiIdiom[G]) = new SemiIdiom[({type λ[α] = G[F[α]]})#λ] {
+    def map[A, B](h: A ⇒ B) = g map (f map h)
+    def app[A, B](h: G[F[A ⇒ B]]) = g app (g map f.app[A, B])(h)
+  }
 }
 
-class IdiomCompose[F[_], G[_]](f: Idiom[F], g: Idiom[G]) extends Idiom[({type λ[α] = F[G[α]]})#λ] {
-  def point[A](a: ⇒ A) = f.point(g.point(a))
-  def app[A, B](h: F[G[A ⇒ B]]) = f app (f map (g.app[A, B] _))(h)
+trait IdiomComposition[F[_]] { f: Idiom[F] ⇒
+  def & [G[_]](g: Idiom[G]) = new Idiom[({type λ[α] = G[F[α]]})#λ] {
+    def point[A](a: ⇒ A) = g.point(f.point(a))
+    def app[A, B](h: G[F[A ⇒ B]]) = g app (g map f.app[A, B])(h)
+  }
+}
+
+/* Note, that whereas other algebraic structures can be composed, monads in
+ * general can't, therefore there's no default implementation of '&' method.
+ * To make a particular monad instance composable, one should mix
+ * `MonadComposition` to Monad object and define '&' method.
+ *
+ * '&' method is called 'monad transformer' elsewhere.
+ */
+trait MonadComposition[F[_]] { f: Monad[F] ⇒
+  def & [G[_]](g: Monad[G]): Monad[({type λ[α] = G[F[α]]})#λ]
 }
