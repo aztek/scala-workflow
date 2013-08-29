@@ -51,9 +51,16 @@ trait IdiomInstances {
 }
 
 trait MonadInstances extends Auxiliary {
-  implicit val option = new Monad[Option] {
+  implicit val option = new Monad[Option] with MonadComposition[Option] {
     def point[A](a: ⇒ A) = Option(a)
     def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
+    def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Option[α]]})#λ] {
+      def point[A](a: ⇒ A) = g.point(Option(a))
+      def bind[A, B](f: A ⇒ G[Option[B]]) = g.bind {
+        case Some(a) ⇒ f(a)
+        case None    ⇒ g.point(None)
+      }
+    }
   }
 
   implicit val list = new Monad[List] {
