@@ -63,9 +63,17 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
-  implicit val list = new Monad[List] {
+  implicit val list = new Monad[List] with MonadComposition[List] {
     def point[A](a: ⇒ A) = List(a)
     def bind[A, B](f: A ⇒ List[B]) = _ flatMap f
+    def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[List[α]]})#λ] {
+      def point[A](a: ⇒ A) = g.point(List(a))
+      def bind[A, B](f: A ⇒ G[List[B]]) = g.bind {
+        _ map f reduce {
+          (a, b) ⇒ g.app(g.map((x: List[B]) ⇒ (y: List[B]) ⇒ x ++ y)(a))(b)
+        }
+      }
+    }
   }
 
   implicit val set = new Monad[Set] {
