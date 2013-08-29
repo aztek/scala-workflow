@@ -96,14 +96,28 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ Stream[B]) = _ flatMap f
   }
 
-  implicit def left[T] = new Monad[({type λ[α] = Either[α, T]})#λ] {
+  implicit def left[T] = new Monad[({type λ[α] = Either[α, T]})#λ] with MonadComposition[({type λ[α] = Either[α, T]})#λ] {
     def point[A](a: ⇒ A) = Left(a)
     def bind[A, B](f: A ⇒ Either[B, T]) = _.left flatMap f
+    def &[G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Either[α, T]]})#λ] {
+      def point[A](a: ⇒ A) = g.point(Left(a))
+      def bind[A, B](f: A ⇒ G[Either[B, T]]) = g.bind {
+        case Left(a)  ⇒ f(a)
+        case Right(t) ⇒ g.point(Right(t))
+      }
+    }
   }
 
-  implicit def right[T] = new Monad[({type λ[α] = Either[T, α]})#λ] {
+  implicit def right[T] = new Monad[({type λ[α] = Either[T, α]})#λ] with MonadComposition[({type λ[α] = Either[T, α]})#λ] {
     def point[A](a: ⇒ A) = Right(a)
     def bind[A, B](f: A ⇒ Either[T, B]) = _.right flatMap f
+    def &[G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Either[T, α]]})#λ] {
+      def point[A](a: ⇒ A) = g.point(Right(a))
+      def bind[A, B](f: A ⇒ G[Either[T, B]]) = g.bind {
+        case Left(t)  ⇒ g.point(Left(t))
+        case Right(a) ⇒ f(a)
+      }
+    }
   }
 
   def either[T] = right[T]
