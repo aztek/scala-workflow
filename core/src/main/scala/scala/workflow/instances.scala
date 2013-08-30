@@ -170,13 +170,23 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
   }
 
-  implicit def writer[O : Monoid] = new Monad[({type λ[α] = Writer[α, O]})#λ] {
+  implicit def writer[O : Monoid] = new Monad[({type λ[α] = Writer[α, O]})#λ] with MonadComposition[({type λ[α] = Writer[α, O]})#λ] {
     private val monoid = implicitly[Monoid[O]]
     def point[A](a: ⇒ A) = Writer(a, monoid.unit)
     def bind[A, B](f: A ⇒ Writer[B, O]) = {
       case Writer(a, o) ⇒
         val Writer(b, o2) = f(a)
         Writer(b, monoid.append(o, o2))
+    }
+    def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Writer[α, O]]})#λ] {
+      def point[A](a: ⇒ A) = g.point(Writer(a, monoid.unit))
+      def bind[A, B](f: A ⇒ G[Writer[B, O]]) = g.bind {
+        case Writer(a, o) ⇒
+          g.map[Writer[B, O], Writer[B, O]] {
+            case Writer(b, o2) ⇒
+              Writer(b, monoid.append(o, o2))
+          }(f(a))
+      }
     }
   }
 
