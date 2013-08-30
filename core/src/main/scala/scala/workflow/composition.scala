@@ -22,13 +22,17 @@ trait IdiomComposition[F[_]] { f: Idiom[F] ⇒
   }
 }
 
-/* Note, that whereas other algebraic structures can be composed, monads in
- * general can't, therefore there's no default implementation of '&' method.
- * To make a particular monad instance composable, one should mix
- * `MonadComposition` to Monad object and define '&' method.
+/* Note, that whereas other algebraic structures can be composed, monads (and
+ * semi-monads) in general can't, therefore there's no default implementation
+ * of '&' method. To make a particular monad instance composable, one should
+ * mix `MonadComposition` to Monad object and define '&' method.
  *
  * '&' method is called 'monad transformer' elsewhere.
  */
+trait SemiMonadComposition[F[_]] { f: SemiMonad[F] ⇒
+  def & [G[_]](g: SemiMonad[G]): SemiMonad[({type λ[α] = G[F[α]]})#λ]
+}
+
 trait MonadComposition[F[_]] { f: Monad[F] ⇒
   def & [G[_]](g: Monad[G]): Monad[({type λ[α] = G[F[α]]})#λ]
 }

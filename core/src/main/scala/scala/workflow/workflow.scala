@@ -39,7 +39,11 @@ trait Idiom[F[_]] extends SemiIdiom[F] with Pointing[F] with IdiomComposition[F]
 
 object Idiom extends IdiomInstances
 
-trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F]
+trait SemiMonad[F[_]] extends SemiIdiom[F] with Binding[F] {
+  def $ [G[_]](g: SemiMonadComposition[G]) = g & this
+}
+
+object SemiMonad extends SemiMonadInstances
 
 trait Monad[F[_]] extends Idiom[F] with Binding[F] {
   def app[A, B](f: F[A ⇒ B]) = bind(a ⇒ bind((g: A ⇒ B) ⇒ point(g(a)))(f))

@@ -50,6 +50,8 @@ trait IdiomInstances {
   }
 }
 
+trait SemiMonadInstances
+
 trait MonadInstances extends Auxiliary {
   implicit val option = new Monad[Option] with MonadComposition[Option] {
     def point[A](a: ⇒ A) = Option(a)
