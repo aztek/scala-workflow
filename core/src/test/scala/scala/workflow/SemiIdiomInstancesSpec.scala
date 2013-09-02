@@ -4,7 +4,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
 class SemiIdiomInstancesSpec extends FlatSpec with ShouldMatchers {
-  behavior of "Built-in semi-context instances"
+  behavior of "Built-in semi-idiom instances"
 
   "ZipLists" should "work" in {
     context(zipList) {
