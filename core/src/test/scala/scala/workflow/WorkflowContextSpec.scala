@@ -211,7 +211,7 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
       val ys = List(None, four, five)
 
       $(xs * 10) should equal (List(Some(20), Some(30), None))
-      $(xs + ys) should equal (List(None, six, seven, None, seven, eight, None, None, None))
+      $(xs + ys) should equal (List(None, six, seven, None, seven, eight, None))
     }
 
     context(list $ option $ option) {
@@ -219,7 +219,7 @@ class WorkflowContextSpec extends FlatSpec with ShouldMatchers {
       val ys = List(None, Some(None), Some(five))
 
       $(xs + 3)  should equal (List(Some(None), Some(five), None))
-      $(xs * ys) should equal (List(None, Some(None), Some(None), None, Some(None), Some(ten), None, None, None))
+      $(xs * ys) should equal (List(Some(None), None, Some(None), Some(ten), None))
     }
   }
 

@@ -53,7 +53,7 @@ trait IdiomInstances {
 trait SemiMonadInstances
 
 trait MonadInstances extends Auxiliary {
-  implicit val option = new Monad[Option] with MonadComposition[Option] {
+  implicit val option = new RightComposableMonad[Option] {
     def point[A](a: ⇒ A) = Option(a)
     def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
     def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Option[α]]})#λ] {
@@ -65,13 +65,13 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
-  implicit val list = new Monad[List] with MonadComposition[List] {
+  implicit val list = new RightComposableMonad[List] {
     def point[A](a: ⇒ A) = List(a)
     def bind[A, B](f: A ⇒ List[B]) = _ flatMap f
     def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[List[α]]})#λ] {
       def point[A](a: ⇒ A) = g.point(List(a))
       def bind[A, B](f: A ⇒ G[List[B]]) = g.bind {
-        _ map f reduce {
+        _.map(f).fold(g.point(Nil: List[B])) {
           (a, b) ⇒ g.app(g.map((x: List[B]) ⇒ (y: List[B]) ⇒ x ++ y)(a))(b)
         }
       }
@@ -98,7 +98,7 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ Stream[B]) = _ flatMap f
   }
 
-  implicit def left[T] = new Monad[({type λ[α] = Either[α, T]})#λ] with MonadComposition[({type λ[α] = Either[α, T]})#λ] {
+  implicit def left[T] = new RightComposableMonad[({type λ[α] = Either[α, T]})#λ] {
     def point[A](a: ⇒ A) = Left(a)
     def bind[A, B](f: A ⇒ Either[B, T]) = _.left flatMap f
     def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Either[α, T]]})#λ] {
@@ -110,7 +110,7 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
-  implicit def right[T] = new Monad[({type λ[α] = Either[T, α]})#λ] with MonadComposition[({type λ[α] = Either[T, α]})#λ] {
+  implicit def right[T] = new RightComposableMonad[({type λ[α] = Either[T, α]})#λ] {
     def point[A](a: ⇒ A) = Right(a)
     def bind[A, B](f: A ⇒ Either[T, B]) = _.right flatMap f
     def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Either[T, α]]})#λ] {
@@ -124,9 +124,10 @@ trait MonadInstances extends Auxiliary {
 
   def either[T] = right[T]
 
-  implicit val id = new Monad[({type λ[α] = α})#λ] with MonadComposition[({type λ[α] = α})#λ] {
+  implicit val id = new RightComposableMonad[({type λ[α] = α})#λ] with LeftComposableMonad[({type λ[α] = α})#λ] {
     def point[A](a: ⇒ A) = a
     def bind[A, B](f: A ⇒ B) = f
+    def $ [G[_]](g: Monad[G]) = g
     def & [G[_]](g: Monad[G]) = g
   }
 
@@ -170,7 +171,7 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
   }
 
-  implicit def writer[O : Monoid] = new Monad[({type λ[α] = Writer[α, O]})#λ] with MonadComposition[({type λ[α] = Writer[α, O]})#λ] {
+  implicit def writer[O : Monoid] = new RightComposableMonad[({type λ[α] = Writer[α, O]})#λ] {
     private val monoid = implicitly[Monoid[O]]
     def point[A](a: ⇒ A) = Writer(a, monoid.unit)
     def bind[A, B](f: A ⇒ Writer[B, O]) = {
