@@ -101,27 +101,41 @@ class CompositionSpec extends FlatSpec with ShouldMatchers {
     (monad.g & idiom.f).isInstanceOf[Idiom[Any]] should equal (true)
   }
 
+  "Composition of a left-composable semi-monad and a semi-monad" should "produce a semi-monad" in {
+    (semimonad.left.f $ semimonad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.f $ semimonad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.f $ semimonad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+  }
+
+  "Composition of a semi-monad and a right-composable semi-monad" should "produce a semi-monad" in {
+    (semimonad.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.f & semimonad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.f & semimonad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.f & semimonad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+  }
+
   "Composition of a left-composable monad and a monad" should "produce a monad" in {
     (monad.left.f $ monad.g).isInstanceOf[Monad[Any]] should equal (true)
     (monad.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
-  }
-
-  "Composition of two left-composable monads" should "produce a monad" in {
     (monad.left.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
     (monad.left.f $ monad.left.g).isInstanceOf[Monad[Any]] should equal (true)
+    (monad.right.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
+    (monad.left.f $ monad.right.g).isInstanceOf[Monad[Any]] should equal (true)
   }
 
   "Composition of a monad and a right-composable monad" should "produce a monad" in {
     (monad.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
     (monad.right.f & monad.g).isInstanceOf[Monad[Any]] should equal (true)
-  }
-
-  "Composition of two right-composable monads" should "produce a monad" in {
     (monad.right.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
     (monad.right.f & monad.right.g).isInstanceOf[Monad[Any]] should equal (true)
+    (monad.left.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
+    (monad.right.f & monad.left.g).isInstanceOf[Monad[Any]] should equal (true)
   }
-
-  // Composition of a left- and right- composable monads should not compile
 }
 
 object CompositionSpec {

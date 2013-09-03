@@ -47,23 +47,27 @@ trait SemiMonadComposition[F[_]] { f: SemiMonad[F] ⇒
   def & [G[_]](g: LeftComposableSemiMonad[G]):  SemiMonad[({type λ[α] = G[F[α]]})#λ] = g $ f
 }
 
-trait LeftComposableSemiMonad[F[_]] extends SemiMonad[F] {
+trait LeftComposableSemiMonad[F[_]] extends SemiMonad[F] with SemiMonadComposition[F] {
   def $ [G[_]](g: SemiMonad[G]): SemiMonad[({type λ[α] = F[G[α]]})#λ]
+  override def $ [G[_]](g: RightComposableSemiMonad[G]) = $(g.asInstanceOf[SemiMonad[G]])
 }
 
-trait RightComposableSemiMonad[F[_]] extends SemiMonad[F] {
+trait RightComposableSemiMonad[F[_]] extends SemiMonad[F] with SemiMonadComposition[F] {
   def & [G[_]](g: SemiMonad[G]): SemiMonad[({type λ[α] = G[F[α]]})#λ]
+  override def & [G[_]](g: LeftComposableSemiMonad[G]) = &(g.asInstanceOf[SemiMonad[G]])
 }
 
 trait MonadComposition[F[_]] { f: Monad[F] ⇒
-  def $ [G[_]](g: RightComposableMonad[G]): Monad[({type λ[α] = F[G[α]]})#λ] = g & f
-  def & [G[_]](g: LeftComposableMonad[G]):  Monad[({type λ[α] = G[F[α]]})#λ] = g $ f
+  def $ [G[_]](g: RightComposableMonad[G]): Monad[({type λ[α] = F[G[α]]})#λ] = g & this
+  def & [G[_]](g: LeftComposableMonad[G]):  Monad[({type λ[α] = G[F[α]]})#λ] = g $ this
 }
 
-trait LeftComposableMonad[F[_]] extends Monad[F] {
+trait LeftComposableMonad[F[_]] extends Monad[F] with MonadComposition[F] {
   def $ [G[_]](g: Monad[G]): Monad[({type λ[α] = F[G[α]]})#λ]
+  override def $ [G[_]](g: RightComposableMonad[G]) = $(g.asInstanceOf[Monad[G]])
 }
 
-trait RightComposableMonad[F[_]] extends Monad[F] {
+trait RightComposableMonad[F[_]] extends Monad[F] with MonadComposition[F] {
   def & [G[_]](g: Monad[G]): Monad[({type λ[α] = G[F[α]]})#λ]
+  override def & [G[_]](g: LeftComposableMonad[G]) = &(g.asInstanceOf[Monad[G]])
 }
