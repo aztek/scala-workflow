@@ -119,6 +119,24 @@ class CompositionSpec extends FlatSpec with ShouldMatchers {
     (semimonad.right.f & semimonad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
   }
 
+  "Composition of a left-composable semi-monad and a monad" should "produce a semi-monad" in {
+    (semimonad.left.f $ monad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.f $ monad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.left.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.left.f $ monad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.right.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+  }
+
+  "Composition of a monad and a right-composable semi-monad" should "produce a semi-monad" in {
+    (semimonad.right.f & monad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.f & monad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.right.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (semimonad.right.f & monad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    (monad.left.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+  }
+
   "Composition of a left-composable monad and a monad" should "produce a monad" in {
     (monad.left.f $ monad.g).isInstanceOf[Monad[Any]] should equal (true)
     (monad.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
