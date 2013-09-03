@@ -136,9 +136,13 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ PartialFunction[R, B]) = g ⇒ { case r if (g isDefinedAt r) && (f(g(r)) isDefinedAt r) ⇒ f(g(r))(r) }
   }
 
-  implicit def function[R] = new Monad[({type λ[α] = R ⇒ α})#λ] {
+  implicit def function[R] = new LeftComposableMonad[({type λ[α] = R ⇒ α})#λ] {
     def point[A](a: ⇒ A) = _ ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ B) = g ⇒ r ⇒ f(g(r))(r)
+    def $ [G[_]](g: Monad[G]) = new Monad[({type λ[α] = R ⇒ G[α]})#λ] {
+      def point[A](a: ⇒ A) = _ ⇒ g.point(a)
+      def bind[A, B](f: A ⇒ R ⇒ G[B]) = h ⇒ r ⇒ g.bind((a: A) ⇒ f(a)(r))(h(r))
+    }
   }
 
   implicit def function2[R, S] = new Monad[({type λ[α] = R ⇒ S ⇒ α})#λ] {
