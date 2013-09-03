@@ -146,27 +146,27 @@ trait MonadInstances extends Auxiliary {
   }
 
   implicit def function2[R, S] = new Monad[({type λ[α] = R ⇒ S ⇒ α})#λ] {
-    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ a
+    def point[A](a: ⇒ A) = _ ⇒ _ ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ B) = g ⇒ r ⇒ s ⇒ f(g(r)(s))(r)(s)
   }
 
   implicit def function3[R, S, T] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ α})#λ] {
-    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ a
+    def point[A](a: ⇒ A) = _ ⇒ _ ⇒ _ ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ f(g(r)(s)(t))(r)(s)(t)
   }
 
   implicit def function4[R, S, T, U] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ α})#λ] {
-    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ a
+    def point[A](a: ⇒ A) = _ ⇒ _ ⇒ _ ⇒ (_: U) ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ f(g(r)(s)(t)(u))(r)(s)(t)(u)
   }
 
   implicit def function5[R, S, T, U, V] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ α})#λ] {
-    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ (_: V) ⇒ a
+    def point[A](a: ⇒ A) = _ ⇒ _ ⇒ _ ⇒ _ ⇒ (_: V) ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ f(g(r)(s)(t)(u)(v))(r)(s)(t)(u)(v)
   }
 
   implicit def function6[R, S, T, U, V, W] = new Monad[({type λ[α] = R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ α})#λ] {
-    def point[A](a: ⇒ A) = (_: R) ⇒ (_: S) ⇒ (_: T) ⇒ (_: U) ⇒ (_: V) ⇒ (_: W) ⇒ a
+    def point[A](a: ⇒ A) = _ ⇒ _ ⇒ _ ⇒ _ ⇒ _ ⇒ _ ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
   }
 
