@@ -503,10 +503,11 @@ be used to construct a composition.
 The same holds for semi-monads.
 
 Check [`instances.scala`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/instances.scala)
-to ensure, which monads are left- or right- composable.
+to ensure, which monads are left or right composable and also [composition specs](https://github.com/aztek/scala-workflow/blob/master/core/src/test/scala/scala/workflow/CompositionSpec.scala)
+for exact rules of composition of different workflow classes.
 
 Methods `$` and `&` are called _monad transformer_ elsewhere, although
-separation of left- and right- composability is usually not introduced.
+separation of left and right composability is usually not introduced.
 
 Examples
 --------
