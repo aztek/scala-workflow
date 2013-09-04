@@ -452,12 +452,15 @@ macros `import workflow.{context, workflow, $}` and access workflow instances
 from `Functor`, `SemiIdiom`, `Idiom` and `Monad` objects.
 
 ### Composing workflows
-Functors, semi-idioms and idioms can be composed, monads and semi-monads can not.
-There are special composition classes (`FunctorCompose`, `SemiIdiomCompose`
-and `IdiomCompose` correspondingly) that allow you, say, having instances of
-`Idiom[F]` and `Idiom[G]`, to get instance of `Idiom[F[G]]`. You can either
-create `IdiomCompose` object directly with class constructor, or use `$` method
-of the class `Idiom`.
+Any pair of functors, semi-idioms or idioms can be composed. That is, for any
+type constructors `F[_]` and `G[_]` one can build instances of `Functor[F[G[_]]]`
+and `Functor[G[F[_]]]` with instances of `Functor[F]` and `Functor[G]` (the same
+for semi-idioms and idioms).
+
+The syntax for workflow composition is `f $ g`, where `f` and `g` are functor,
+semi-idiom or idiom instances of type constructors `F[_]` and `G[_]`. The result
+would be, correspondingly, functor, semi-idiom or idiom of type constructor
+`F[G[_]]`.
 
 ```scala
 context(list $ option) {
@@ -469,6 +472,41 @@ You can also combine workflows of different classes with the same syntax, the
 result workflow will implement the weaker interface of the two. For instance,
 `map[String] $ option` will implement `Functor`, because `map`s `Functor` is
 weaker than `option`'s `Monad`.
+
+`$` method has a counterpart method `&`, that produces `G[F[_]]` workflow
+instance. Naturally, `f $ g = g & f`.
+
+Monads and semi-monads in general cannot be composed. Instead, some particular
+monads can provide their own specific implementation of `$` or `&` method.
+However, even having, say, `$` method defined, monad might not be able to
+define `&`. That is, `Monad[F]` can either construct `Monad[F[G[_]]` or
+`Monad[G[F[_]]]` with arbitrary `Monad[G]`.
+
+To capture this notion, `Monad[F]` can be extended to either
+`LeftComposableMonad[F]` or `RightComposableMonad[F]`. In the first case it is
+supposed to be able to produce `Monad[F[G[_]]]` and therefore implement `$`
+method. In the second case it is supposed to be able to produce `Monad[G[F[_]]]`
+and therefore implement `$` method.
+
+For example, `Option` is _right-composable_, i.e. can implement
+`def & [G[_]](g: Monad[G]): Monad[({type λ[α] = G[Option[α]]})#λ]`, whereas
+function monad `R ⇒ _` is `left-composable` and can implement
+`def $ [G[_]](g: Monad[G]): Monad[({type λ[α] = R ⇒ G[α]})#λ]`.
+
+So, for monads `f` and `g` their composition `f $ g` will be a monad either
+when `f` is left-composable or `g` is right-composable or visa versa for `&`.
+When in the expression `f $ g` `f` is left-composable and `g` is right-composable,
+`f`'s `$` method will be used to construct a composition. When in the expression
+`g & f` `f` is left-composable and `g` is right-composable, `g`'s `&` method will
+be used to construct a composition.
+
+The same holds for semi-monads.
+
+Check [`instances.scala`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/instances.scala)
+to ensure, which monads are left- or right- composable.
+
+Methods `$` and `&` are called 'monad transformer' elsewhere, although
+separation of left- and right- composability is usually not introduced.
 
 Examples
 --------
