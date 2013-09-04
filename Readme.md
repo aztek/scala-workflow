@@ -471,7 +471,7 @@ context(list $ option) {
 You can also combine workflows of different classes with the same syntax, the
 result workflow will implement the weaker interface of the two. For instance,
 `map[String] $ option` will implement `Functor`, because `map`s `Functor` is
-weaker than `option`'s `Monad`.
+weaker than `option`s `Monad`.
 
 `$` method has a counterpart method `&`, that produces `G[F[_]]` workflow
 instance. Naturally, `f $ g = g & f`.
@@ -489,9 +489,9 @@ method. In the second case it is supposed to be able to produce `Monad[G[F[_]]]`
 and therefore implement `$` method.
 
 For example, `Option` is _right-composable_, i.e. can implement
-`def & [G[_]](g: Monad[G]): Monad[({type λ[α] = G[Option[α]]})#λ]`, whereas
-function monad `R ⇒ _` is `left-composable` and can implement
-`def $ [G[_]](g: Monad[G]): Monad[({type λ[α] = R ⇒ G[α]})#λ]`.
+`def & [G[_]](g: Monad[G]): Monad[G[Option[_]]]`, whereas
+function monad `R ⇒ _` is _left-composable_ and can implement
+`def $ [G[_]](g: Monad[G]): Monad[R ⇒ G[_]]`.
 
 So, for monads `f` and `g` their composition `f $ g` will be a monad either
 when `f` is left-composable or `g` is right-composable or visa versa for `&`.
@@ -505,7 +505,7 @@ The same holds for semi-monads.
 Check [`instances.scala`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/instances.scala)
 to ensure, which monads are left- or right- composable.
 
-Methods `$` and `&` are called 'monad transformer' elsewhere, although
+Methods `$` and `&` are called _monad transformer_ elsewhere, although
 separation of left- and right- composability is usually not introduced.
 
 Examples
