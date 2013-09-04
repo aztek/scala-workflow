@@ -195,11 +195,18 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
-  implicit def reader[E] = new Monad[({type λ[α] = Reader[E, α]})#λ] {
+  implicit def reader[E] = new LeftComposableMonad[({type λ[α] = Reader[E, α]})#λ] {
     def point[A](a: ⇒ A) = Reader(_ ⇒ a)
     def bind[A, B](f: A ⇒ Reader[E, B]) = {
       case Reader(r) ⇒
         Reader(e ⇒ f(r(e)).run(e))
+    }
+    def $ [G[_]](g: Monad[G]) = new Monad[({type λ[α] = Reader[E, G[α]]})#λ] {
+      def point[A](a: ⇒ A) = Reader(_ ⇒ g.point(a))
+      def bind[A, B](f: A ⇒ Reader[E, G[B]]) = {
+        case Reader(r) ⇒
+          Reader(e ⇒ g.bind((a: A) ⇒ f(a).run(e))(r(e)))
+      }
     }
   }
 
