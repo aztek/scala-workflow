@@ -5,7 +5,7 @@ import language.higherKinds
 import reflect.macros.{TypecheckException, Context}
 import util.{Failure, Success}
 
-package object workflow extends FunctorInstances with SemiIdiomInstances with IdiomInstances with SemiMonadInstances with MonadInstances with MonoidInstances {
+package object workflow extends FunctorInstances with SemiIdiomInstances with IdiomInstances with SemiMonadInstances with MonadInstances with SemigroupInstances with MonoidInstances {
   def context[F[_]](code: _): _ = macro contextImpl
   def contextImpl(c: Context)(code: c.Tree): c.Tree = {
     import c.universe._

@@ -199,11 +199,39 @@ trait MonadInstances extends Auxiliary {
   }
 }
 
+trait SemigroupInstances {
+  val maxSemigroup = new Semigroup[Int] {
+    def append = _ max _
+  }
+
+  val minSemigroup = new Semigroup[Int] {
+    def append = _ min _
+  }
+}
+
 trait MonoidInstances {
   implicit def listMonoid[A] = new Monoid[List[A]] {
     val unit = Nil
-    def append = {
-      case (xs, ys) => xs ++ ys
-    }
+    def append = _ ++ _
+  }
+
+  val conjunctionMonoid = new Monoid[Boolean] {
+    val unit = true
+    def append = _ && _
+  }
+
+  val disjunctionMonoid = new Monoid[Boolean] {
+    val unit = false
+    def append = _ || _
+  }
+
+  implicit val additionMonoid = new Monoid[Int] {
+    val unit = 0
+    def append = _ + _
+  }
+
+  val multiplicationMonoid = new Monoid[Int] {
+    val unit = 1
+    def append = _ * _
   }
 }

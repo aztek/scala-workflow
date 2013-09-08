@@ -8,11 +8,11 @@ trait Auxiliary {
     def state(s: S)  = { val (_, state)  = run(s); state  }
   }
 
-  case class Cont[R, A](run: (A ⇒ R) ⇒ R)
-
   trait Semigroup[A] {
     def append: (A, A) ⇒ A
   }
+
+  object Semigroup extends SemigroupInstances
 
   trait Monoid[A] extends Semigroup[A] {
     val unit: A
