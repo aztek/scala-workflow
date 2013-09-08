@@ -58,7 +58,7 @@ trait IdiomInstances {
 
 trait SemiMonadInstances
 
-trait MonadInstances extends Auxiliary {
+trait MonadInstances {
   implicit val option = new RightComposableMonad[Option] {
     def point[A](a: ⇒ A) = Option(a)
     def bind[A, B](f: A ⇒ Option[B]) = _ flatMap f
