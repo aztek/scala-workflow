@@ -1,9 +1,7 @@
 package scala.workflow
 
 import language.higherKinds
-
-import concurrent.Future
-import concurrent.ExecutionContext.Implicits.global
+import concurrent.{ExecutionContext, Future}
 import util.Try
 
 trait Instances extends FunctorInstances
@@ -96,7 +94,7 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ Try[B]) = _ flatMap f
   }
 
-  implicit val future = new Monad[Future] {
+  implicit def future(implicit executor: ExecutionContext) = new Monad[Future] {
     def point[A](a: ⇒ A) = Future(a)
     def bind[A, B](f: A ⇒ Future[B]) = _ flatMap f
   }
