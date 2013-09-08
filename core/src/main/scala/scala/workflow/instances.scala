@@ -6,6 +6,14 @@ import concurrent.Future
 import concurrent.ExecutionContext.Implicits.global
 import util.Try
 
+trait Instances extends FunctorInstances
+                   with SemiIdiomInstances
+                   with IdiomInstances
+                   with SemiMonadInstances
+                   with MonadInstances
+                   with SemigroupInstances
+                   with MonoidInstances
+
 trait FunctorInstances {
   implicit def tupleL[T] = new Functor[({type λ[α] = (α, T)})#λ] {
     def map[A, B](f: A ⇒ B) = { case (lhs, rhs) ⇒ (f(lhs), rhs) }
