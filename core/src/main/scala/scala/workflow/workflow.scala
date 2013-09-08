@@ -1,7 +1,6 @@
 package scala.workflow
 
 import language.higherKinds
-import scala.reflect.internal.annotations.compileTimeOnly
 
 trait Workflow[F[_]]
 
