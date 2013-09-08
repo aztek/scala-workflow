@@ -165,13 +165,18 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   "Stack language interpretation" should "be correct" in {
     type Stack = List[Int]
     type Error = String
-    type Result = Either[Error, Stack]
+    type State = Either[Error, Stack]
 
-    val stackLang = state[Result]
+    type Program = State ⇒ (Unit, State)
 
-    def command(f: Stack ⇒ Result) = State[Unit, Result](st ⇒ ( {}, right[Error].bind(f)(st)))
+    val stackLang = state[State]
 
-    def execute(program: State[Unit, Result]) = program.state(Right(Nil))
+    def command(f: Stack ⇒ State): Program = st ⇒ ((), right[Error].bind(f)(st))
+
+    def execute(program: Program) = {
+      val (_, state) = program(Right(Nil))
+      state
+    }
 
     def put(value: Int) = command {
       case stack ⇒ Right(value :: stack)

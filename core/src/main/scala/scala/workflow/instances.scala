@@ -178,9 +178,9 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
   }
 
-  implicit def state[S] = new Monad[({type λ[α] = State[α, S]})#λ] {
-    def point[A](a: ⇒ A) = State[A, S]((a, _))
-    def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
+  implicit def state[S] = new Monad[({type λ[α] = S ⇒ (α, S)})#λ] {
+    def point[A](a: ⇒ A) = (a, _)
+    def bind[A, B](f: A ⇒ S ⇒ (B, S)) = _ andThen { case (a, s) ⇒ f(a)(s) }
   }
 
   implicit def writer[O : Monoid] = new RightComposableMonad[({type λ[α] = (α, O)})#λ] {
