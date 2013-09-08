@@ -20,5 +20,5 @@ trait Auxiliary {
     val unit: A
   }
 
-  case class Writer[R, O : Monoid](result: R, output: O)
+  object Monoid extends MonoidInstances
 }

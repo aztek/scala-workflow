@@ -145,6 +145,8 @@ trait MonadInstances extends Auxiliary {
     }
   }
 
+  def reader[E] = function[E]
+
   implicit def function2[R, S] = new Monad[({type λ[α] = R ⇒ S ⇒ α})#λ] {
     def point[A](a: ⇒ A) = _ ⇒ _ ⇒ a
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ B) = g ⇒ r ⇒ s ⇒ f(g(r)(s))(r)(s)
@@ -175,37 +177,18 @@ trait MonadInstances extends Auxiliary {
     def bind[A, B](f: A ⇒ State[B, S]) = state ⇒ State[B, S](state.run andThen { case (a, s) ⇒ f(a).run(s) })
   }
 
-  implicit def writer[O : Monoid] = new RightComposableMonad[({type λ[α] = Writer[α, O]})#λ] {
+  implicit def writer[O : Monoid] = new RightComposableMonad[({type λ[α] = (α, O)})#λ] {
     private val monoid = implicitly[Monoid[O]]
-    def point[A](a: ⇒ A) = Writer(a, monoid.unit)
-    def bind[A, B](f: A ⇒ Writer[B, O]) = {
-      case Writer(a, o) ⇒
-        val Writer(b, o2) = f(a)
-        Writer(b, monoid.append(o, o2))
+    def point[A](a: ⇒ A) = (a, monoid.unit)
+    def bind[A, B](f: A ⇒ (B, O)) = {
+      case (a, o) ⇒ pair[B].map(monoid.append(o, _: O))(f(a))
     }
-    def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[Writer[α, O]]})#λ] {
-      def point[A](a: ⇒ A) = g.point(Writer(a, monoid.unit))
-      def bind[A, B](f: A ⇒ G[Writer[B, O]]) = g.bind {
-        case Writer(a, o) ⇒
-          g.map[Writer[B, O], Writer[B, O]] {
-            case Writer(b, o2) ⇒
-              Writer(b, monoid.append(o, o2))
-          }(f(a))
-      }
-    }
-  }
-
-  implicit def reader[E] = new LeftComposableMonad[({type λ[α] = Reader[E, α]})#λ] {
-    def point[A](a: ⇒ A) = Reader(_ ⇒ a)
-    def bind[A, B](f: A ⇒ Reader[E, B]) = {
-      case Reader(r) ⇒
-        Reader(e ⇒ f(r(e)).run(e))
-    }
-    def $ [G[_]](g: Monad[G]) = new Monad[({type λ[α] = Reader[E, G[α]]})#λ] {
-      def point[A](a: ⇒ A) = Reader(_ ⇒ g.point(a))
-      def bind[A, B](f: A ⇒ Reader[E, G[B]]) = {
-        case Reader(r) ⇒
-          Reader(e ⇒ g.bind((a: A) ⇒ f(a).run(e))(r(e)))
+    def & [G[_]](g: Monad[G]) = new Monad[({type λ[α] = G[(α, O)]})#λ] {
+      def point[A](a: ⇒ A) = g.point((a, monoid.unit))
+      def bind[A, B](f: A ⇒ G[(B, O)]) = g.bind {
+        case (a, o) ⇒ g.map {
+          pair[B].map(monoid.append(o, _: O))
+        }(f(a))
       }
     }
   }
@@ -213,5 +196,14 @@ trait MonadInstances extends Auxiliary {
   implicit def cont[R] = new Monad[({type λ[α] = Cont[R, α]})#λ] {
     def point[A](a: ⇒ A) = Cont(_(a))
     def bind[A, B](f: A ⇒ Cont[R, B]) = cont ⇒ Cont(g ⇒ cont.run(a ⇒ f(a).run(g)))
+  }
+}
+
+trait MonoidInstances {
+  implicit def listMonoid[A] = new Monoid[List[A]] {
+    val unit = Nil
+    def append = {
+      case (xs, ys) => xs ++ ys
+    }
   }
 }

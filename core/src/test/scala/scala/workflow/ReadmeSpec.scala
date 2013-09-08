@@ -241,36 +241,29 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Purely functional logging" should "work" in {
-    case class Log(entries: List[String])
+    type Log = List[String]
 
-    implicit val logMonoid = new Monoid[Log] {
-      val unit = Log(Nil)
-      def append = {
-        case (Log(oldEntries), Log(newEntries)) ⇒ Log(oldEntries ++ newEntries)
-      }
-    }
+    def info(message: String) = (Unit, List(message))
 
-    def log(message: String) = Writer[Unit, Log]({}, Log(List(message)))
-
-    val Writer(result, logEntries) = workflow(writer[Log]) {
-      log("Lets define a variable")
+    val (result, log) = workflow(writer[Log]) {
+      info("Lets define a variable")
       val x = 2
 
-      log("And calculate a square of it")
+      info("And calculate a square of it")
       val square = x * x
 
-      log("Also a cube and add them together")
+      info("Also a cube and add them together")
       val cube = x * x * x
       val sum = square + cube
 
-      log("This is all so silly")
-      30 / 5
+      info("This is all so silly")
+      sum / 2
     }
 
     result should equal (6)
-    logEntries should equal (Log(List("Lets define a variable",
-                                      "And calculate a square of it",
-                                      "Also a cube and add them together",
-                                      "This is all so silly")))
+    log should equal (List("Lets define a variable",
+                           "And calculate a square of it",
+                           "Also a cube and add them together",
+                           "This is all so silly"))
   }
 }
