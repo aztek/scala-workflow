@@ -240,4 +240,9 @@ trait MonoidInstances {
     val unit = 1
     def append = _ * _
   }
+
+  implicit val string = new Monoid[String] {
+    val unit = ""
+    def append = _ + _
+  }
 }
