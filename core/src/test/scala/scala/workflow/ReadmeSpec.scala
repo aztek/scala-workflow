@@ -246,19 +246,21 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
   }
 
   "Purely functional logging" should "work" in {
-    type Log = List[String]
+    val logging = accumulator[List[String]]
+
+    def mult(x: Int, y: Int) = (x * y, List(s"Calculating $x * $y"))
 
     def info(message: String) = (Unit, List(message))
 
-    val (result, log) = workflow(writer[Log]) {
+    val (result, log) = workflow(logging) {
       info("Lets define a variable")
       val x = 2
 
       info("And calculate a square of it")
-      val square = x * x
+      val square = mult(x, x)
 
       info("Also a cube and add them together")
-      val cube = x * x * x
+      val cube = mult(mult(x, x), x)
       val sum = square + cube
 
       info("This is all so silly")
@@ -268,7 +270,10 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     result should equal (6)
     log should equal (List("Lets define a variable",
                            "And calculate a square of it",
+                           "Calculating 2 * 2",
                            "Also a cube and add them together",
+                           "Calculating 2 * 2",
+                           "Calculating 4 * 2",
                            "This is all so silly"))
   }
 }

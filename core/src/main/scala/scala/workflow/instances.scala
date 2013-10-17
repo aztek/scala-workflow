@@ -183,7 +183,7 @@ trait MonadInstances {
     def bind[A, B](f: A ⇒ S ⇒ (B, S)) = _ andThen { case (a, s) ⇒ f(a)(s) }
   }
 
-  implicit def writer[O : Monoid] = new RightComposableMonad[({type λ[α] = (α, O)})#λ] {
+  def accumulator[O : Monoid] = new RightComposableMonad[({type λ[α] = (α, O)})#λ] {
     private val monoid = implicitly[Monoid[O]]
     def point[A](a: ⇒ A) = (a, monoid.unit)
     def bind[A, B](f: A ⇒ (B, O)) = {
