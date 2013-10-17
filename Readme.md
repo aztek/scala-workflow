@@ -766,90 +766,70 @@ effects can be expressed with monads. However, functional purity often comes
 with the price of rather cumbersome syntax, compared to equivalent imperative
 constructs.
 
-`scala-workflow` tries to bridge this gap. In this example, `Writer` monad is
-used to allow snippets of imperative-looking code to mix pure computations and
-logging in purely functional manner.
+`scala-workflow` among other things tries to bridge this gap. In this example
+it is used to allow snippets of imperative-looking code to mix pure computations
+and logging in purely functional manner.
 
-We start with a simple definition of a [semigroup](http://en.wikipedia.org/wiki/Semigroup)
-and a [monoid](http://en.wikipedia.org/wiki/Monoid).
-
-```scala
-trait Semigroup[A] {
-  def append: (A, A) ⇒ A
-}
-
-trait Monoid[A] extends Semigroup[A] {
-  val unit: A
-}
-```
-
-`Writer` monad represents computations, those results are accompanied with some
-accumulated output. The value, produced by such computations is represented
-with an auxiliary `Writer` class that contains the result and the output that
-is made a monoid instance to capture the notion of "accumulation" (semigroup
-would suffice just for accumulation, but we would also like to produce results
-with empty output, hence a monoid).
+Workflow instance for this example will be `accumulator`.
 
 ```scala
-case class Writer[R, O : Monoid](result: R, output: O)
+val logging = accumulator[List[String]]
 ```
 
-A log file is basically a list of log entries, so we model it as is.
+Accumulator monad (called `Writer` monad elsewhere) captures a computation that
+aside from producing the result, accumulates some auxiliary output. In this case
+it's message in a log, represented as plain list of strings. In general case,
+type with defined [`Monoid`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/auxiliary.scala) instance is expected.
+
+Regular functions naturally don't produce any log messages in `accumulator`
+monad sense. To produce log message, a function must return a tuple of result
+of the computation and a list.
 
 ```scala
-case class Log(entries: List[String])
+def mult(x: Int, y: Int) = (x * y, List(s"Calculating $x * $y"))
 ```
 
-It is of course possible to define monoid instance for this class, because
-lists are themselves monoids.
+Functions, that produce no result and some log messages should return a tuple
+with unit result.
 
 ```scala
-implicit val logMonoid = new Monoid[Log] {
-  val unit = Log(Nil)
-  def append = {
-    case (Log(oldEntries), Log(newEntries)) ⇒ Log(oldEntries ++ newEntries)
-  }
-}
+def info(message: String) = (Unit, List(message))
 ```
 
-With this instance defined in the implicits scope we can now construct
-`writer[Log]` workflow. `log` function will lift log entry to `Writer` context.
-
-```scala
-def log(message: String) = Writer[Unit, Log]({}, Log(List(message)))
-```
-
-Having a snippet of code wrapped in `workflow(writer[Log])`, we can intersperse
+Having a snippet of code wrapped in `workflow(logging)`, we can intersperse
 pure computations with writing to a log, much like we would do with `log4j` or
 similar framework.
 
 ```scala
-val Writer(result, logEntries) = workflow(writer[Log]) {
-  log("Lets define a variable")
+val (result, log) = workflow(logging) {
+  info("Lets define a variable")
   val x = 2
 
-  log("And calculate a square of it")
-  val square = x * x
+  info("And calculate a square of it")
+  val square = mult(x, x)
 
-  log("Also a cube and add them together")
-  val cube = x * x * x
+  info("Also a cube and add them together")
+  val cube = mult(mult(x, x), x)
   val sum = square + cube
 
-  log("This is all so silly")
-  30 / 5
+  info("This is all so silly")
+  sum / 2
 }
 ```
 
 The result of computation is now stored in `result` and the log is in
-`logEntries`. Note, that no side effects or mutable state whatsoever were
+`log`. Note, that no side effects or mutable state whatsoever were
 involved in this example.
 
 ```scala
 result should equal (6)
-logEntries should equal (Log(List("Lets define a variable",
-                                  "And calculate a square of it",
-                                  "Also a cube and add them together",
-                                  "This is all so silly")))
+log should equal (List("Lets define a variable",
+                       "And calculate a square of it",
+                       "Calculating 2 * 2",
+                       "Also a cube and add them together",
+                       "Calculating 2 * 2",
+                       "Calculating 4 * 2",
+                       "This is all so silly"))
 ```
 
 Disclaimer
