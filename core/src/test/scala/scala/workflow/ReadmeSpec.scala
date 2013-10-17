@@ -164,19 +164,11 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
 
   "Stack language interpretation" should "be correct" in {
     type Stack = List[Int]
-    type Error = String
-    type State = Either[Error, Stack]
-
-    type Program = State ⇒ (Unit, State)
+    type State = Either[String, Stack]
 
     val stackLang = state[State]
 
-    def command(f: Stack ⇒ State): Program = st ⇒ ((), right[Error].bind(f)(st))
-
-    def execute(program: Program) = {
-      val (_, state) = program(Right(Nil))
-      state
-    }
+    def command(f: Stack ⇒ State) = (st: State) ⇒ ((), either[String].bind(f)(st))
 
     def put(value: Int) = command {
       case stack ⇒ Right(value :: stack)
@@ -195,6 +187,11 @@ class ReadmeSpec extends FlatSpec with ShouldMatchers {
     def sub = command {
       case a :: b :: stack ⇒ Right((b - a) :: stack)
       case _ ⇒ Left("Stack underflow while executing `sub`")
+    }
+
+    def execute(program: State ⇒ (Unit, State)) = {
+      val (_, state) = program(Right(Nil))
+      state
     }
 
     context(stackLang) {

@@ -616,7 +616,7 @@ context(frp) {
 
 ### Monadic interpreter for stack programming language
 If you enjoy embedding monadic domain-specific languages in your Scala programs,
-you might like syntactical perks `scala-workflow` could bring. Consider a
+you might like syntactical perks `scala-workflow` could offer. Consider a
 little embedded stack programming language.
 
 We represent stack as a regular `List`, and the result of a program, that
@@ -625,23 +625,27 @@ manipulates with a stack, as either a modified stack or an error message
 
 ```scala
 type Stack = List[Int]
-type Result = Either[String, Stack]
+type State = Either[String, Stack]
 ```
 
 The evaluation of the program will use `state` monad, that will disregard
 the result of any command, but preserve the state of the stack.
 
 ```scala
-val stackLang = state[Result]
-
-def execute(program: State[Unit, Result]) = program.state(Right(Nil))
+val stackLang = state[State]
 ```
 
-We would like to define stack operators as `Stack ⇒ Result` functions. To be
+Unlike State monad in Haskell or `scalaz`, `state` doesn't use any specific
+wrappers to represent the result of the computation, but rather works with bare
+functions.
+
+We would like to define stack operators as `Stack ⇒ State` functions. To be
 able to use them within some `workflow`, we need to lift them into the monad.
+In this example we are only interested in the modified state of the computation,
+so the result is always set to `()`.
 
 ```scala
-def command(f: Stack ⇒ Result) = State[Unit, Result](st ⇒ ({}, right[String].bind(f)(st)))
+def command(f: Stack ⇒ State) = (st: State) ⇒ ((), either[String].bind(f)(st))
 ```
 
 With `command` helper we can now define a bunch of commands, working with stack.
@@ -664,6 +668,15 @@ def rot = command {
 def sub = command {
   case a :: b :: stack ⇒ Right((b - a) :: stack)
   case _ ⇒ Left("Stack underflow while executing `sub`")
+}
+```
+
+Execution of the program on the empty stack simply takes the modified stack.
+
+```scala
+def execute(program: State ⇒ (Unit, State)) = {
+  val (_, state) = program(Right(Nil))
+  state
 }
 ```
 
