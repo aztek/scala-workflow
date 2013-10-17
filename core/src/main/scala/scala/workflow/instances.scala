@@ -130,7 +130,7 @@ trait MonadInstances {
 
   def either[T] = right[T]
 
-  implicit val id = new RightComposableMonad[({type λ[α] = α})#λ] with LeftComposableMonad[({type λ[α] = α})#λ] {
+  val id = new RightComposableMonad[({type λ[α] = α})#λ] with LeftComposableMonad[({type λ[α] = α})#λ] {
     def point[A](a: ⇒ A) = a
     def bind[A, B](f: A ⇒ B) = f
     def $ [G[_]](g: Monad[G]) = g
@@ -178,7 +178,7 @@ trait MonadInstances {
     def bind[A, B](f: A ⇒ R ⇒ S ⇒ T ⇒ U ⇒ V ⇒ W ⇒ B) = g ⇒ r ⇒ s ⇒ t ⇒ u ⇒ v ⇒ w ⇒ f(g(r)(s)(t)(u)(v)(w))(r)(s)(t)(u)(v)(w)
   }
 
-  implicit def state[S] = new Monad[({type λ[α] = S ⇒ (α, S)})#λ] {
+  def state[S] = new Monad[({type λ[α] = S ⇒ (α, S)})#λ] {
     def point[A](a: ⇒ A) = (a, _)
     def bind[A, B](f: A ⇒ S ⇒ (B, S)) = _ andThen { case (a, s) ⇒ f(a)(s) }
   }
