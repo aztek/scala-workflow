@@ -9,7 +9,8 @@ object BuildSettings {
     scalaVersion := "2.11.0-SNAPSHOT",
     scalaOrganization := "org.scala-lang.macro-paradise",
     resolvers += Resolver.sonatypeRepo("snapshots"),
-    resolvers += Resolver.sonatypeRepo("releases")
+    resolvers += Resolver.sonatypeRepo("releases"),
+    initialCommands in console := "import scala.workflow._"
   )
 }
 

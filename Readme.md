@@ -11,12 +11,10 @@ that is an experimental feature of [Macro Paradise](http://docs.scala-lang.org/o
 $ git clone https://github.com/aztek/scala-workflow
 $ cd scala-workflow
 $ sbt console
+import scala.workflow._
 Welcome to Scala version 2.11.0
 Type in expressions to have them evaluated.
 Type :help for more information.
-
-scala> import workflow._
-import workflow._
 
 scala> $[List](List(1, 2) * List(4, 5))
 res0: List[Int] = List(4, 5, 8, 10)
