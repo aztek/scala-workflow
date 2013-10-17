@@ -11,148 +11,153 @@ class CompositionSpec extends FlatSpec with ShouldMatchers {
 
   import CompositionSpec._
 
+  /* Type arguments of workflow instances can only be checked at compile
+     time (unless Manifests or TypeTags are used) due to type erasure.
+     Successful compilation of this specification is enough to prove
+     that everything is working. */
+
   "Composition of two functors" should "produce a functor" in {
-    (functor.f $ functor.g).isInstanceOf[Functor[Any]] should equal (true)
-    (functor.f & functor.g).isInstanceOf[Functor[Any]] should equal (true)
+    functor.f $ functor.g: Functor[({type λ[α] = F[G[α]]})#λ]
+    functor.f & functor.g: Functor[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of two semi-idioms" should "produce a semi-idiom" in {
-    (semiidiom.f $ semiidiom.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semiidiom.f & semiidiom.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
+    semiidiom.f $ semiidiom.g: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
+    semiidiom.f & semiidiom.g: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of two idioms" should "produce an idiom" in {
-    (idiom.f $ idiom.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (idiom.f & idiom.g).isInstanceOf[Idiom[Any]] should equal (true)
+    idiom.f $ idiom.g: Idiom[({type λ[α] = F[G[α]]})#λ]
+    idiom.f & idiom.g: Idiom[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of two non-composable monads" should "produce an idiom" in {
-    (monad.f $ monad.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (monad.f & monad.g).isInstanceOf[Idiom[Any]] should equal (true)
+    monad.f $ monad.g: Idiom[({type λ[α] = F[G[α]]})#λ]
+    monad.f & monad.g: Idiom[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of a functor and a semi-idiom" should "produce a functor" in {
-    (functor.f $ semiidiom.g).isInstanceOf[Functor[Any]] should equal (true)
-    (functor.f & semiidiom.g).isInstanceOf[Functor[Any]] should equal (true)
-    (semiidiom.g $ functor.f).isInstanceOf[Functor[Any]] should equal (true)
-    (semiidiom.g & functor.f).isInstanceOf[Functor[Any]] should equal (true)
+    functor.f $ semiidiom.g: Functor[({type λ[α] = F[G[α]]})#λ]
+    functor.f & semiidiom.g: Functor[({type λ[α] = G[F[α]]})#λ]
+    semiidiom.g $ functor.f: Functor[({type λ[α] = G[F[α]]})#λ]
+    semiidiom.g & functor.f: Functor[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a functor and an idiom" should "produce a functor" in {
-    (functor.f $ idiom.g).isInstanceOf[Functor[Any]] should equal (true)
-    (functor.f & idiom.g).isInstanceOf[Functor[Any]] should equal (true)
-    (idiom.g $ functor.f).isInstanceOf[Functor[Any]] should equal (true)
-    (idiom.g & functor.f).isInstanceOf[Functor[Any]] should equal (true)
+    functor.f $ idiom.g: Functor[({type λ[α] = F[G[α]]})#λ]
+    functor.f & idiom.g: Functor[({type λ[α] = G[F[α]]})#λ]
+    idiom.g $ functor.f: Functor[({type λ[α] = G[F[α]]})#λ]
+    idiom.g & functor.f: Functor[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a functor and a semi-monad" should "produce a functor" in {
-    (functor.f $ semimonad.g).isInstanceOf[Functor[Any]] should equal (true)
-    (functor.f & semimonad.g).isInstanceOf[Functor[Any]] should equal (true)
-    (semimonad.g $ functor.f).isInstanceOf[Functor[Any]] should equal (true)
-    (semimonad.g & functor.f).isInstanceOf[Functor[Any]] should equal (true)
+    functor.f $ semimonad.g: Functor[({type λ[α] = F[G[α]]})#λ]
+    functor.f & semimonad.g: Functor[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g $ functor.f: Functor[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g & functor.f: Functor[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a functor and a monad" should "produce a functor" in {
-    (functor.f $ monad.g).isInstanceOf[Functor[Any]] should equal (true)
-    (functor.f & monad.g).isInstanceOf[Functor[Any]] should equal (true)
-    (monad.g $ functor.f).isInstanceOf[Functor[Any]] should equal (true)
-    (monad.g & functor.f).isInstanceOf[Functor[Any]] should equal (true)
+    functor.f $ monad.g: Functor[({type λ[α] = F[G[α]]})#λ]
+    functor.f & monad.g: Functor[({type λ[α] = G[F[α]]})#λ]
+    monad.g $ functor.f: Functor[({type λ[α] = G[F[α]]})#λ]
+    monad.g & functor.f: Functor[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a semi-idiom and an idiom" should "produce a semi-idiom" in {
-    (semiidiom.f $ idiom.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semiidiom.f & idiom.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (idiom.g $ semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (idiom.g & semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
+    semiidiom.f $ idiom.g: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
+    semiidiom.f & idiom.g: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    idiom.g $ semiidiom.f: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    idiom.g & semiidiom.f: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a semi-idiom and a semi-monad" should "produce a semi-idiom" in {
-    (semiidiom.f $ semimonad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semiidiom.f & semimonad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semimonad.g $ semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semimonad.g & semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
+    semiidiom.f $ semimonad.g: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
+    semiidiom.f & semimonad.g: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g $ semiidiom.f: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g & semiidiom.f: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a semi-idiom and a monad" should "produce a semi-idiom" in {
-    (semiidiom.f $ monad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semiidiom.f & monad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (monad.g $ semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (monad.g & semiidiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
+    semiidiom.f $ monad.g: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
+    semiidiom.f & monad.g: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g $ semiidiom.f: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g & semiidiom.f: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a idiom and a semi-monad" should "produce a semi-idiom" in {
-    (idiom.f $ semimonad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (idiom.f & semimonad.g).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semimonad.g $ idiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
-    (semimonad.g & idiom.f).isInstanceOf[SemiIdiom[Any]] should equal (true)
+    idiom.f $ semimonad.g: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
+    idiom.f & semimonad.g: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g $ idiom.f: SemiIdiom[({type λ[α] = G[F[α]]})#λ]
+    semimonad.g & idiom.f: SemiIdiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a idiom and a monad" should "produce an idiom" in {
-    (idiom.f $ monad.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (idiom.f & monad.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (monad.g $ idiom.f).isInstanceOf[Idiom[Any]] should equal (true)
-    (monad.g & idiom.f).isInstanceOf[Idiom[Any]] should equal (true)
+    idiom.f $ monad.g: Idiom[({type λ[α] = F[G[α]]})#λ]
+    idiom.f & monad.g: Idiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g $ idiom.f: Idiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g & idiom.f: Idiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a semi-monad and a monad" should "produce a semi-monad" in {
-    (idiom.f $ monad.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (idiom.f & monad.g).isInstanceOf[Idiom[Any]] should equal (true)
-    (monad.g $ idiom.f).isInstanceOf[Idiom[Any]] should equal (true)
-    (monad.g & idiom.f).isInstanceOf[Idiom[Any]] should equal (true)
+    idiom.f $ monad.g: Idiom[({type λ[α] = F[G[α]]})#λ]
+    idiom.f & monad.g: Idiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g $ idiom.f: Idiom[({type λ[α] = G[F[α]]})#λ]
+    monad.g & idiom.f: Idiom[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a left-composable semi-monad and a semi-monad" should "produce a semi-monad" in {
-    (semimonad.left.f $ semimonad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.f $ semimonad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.f $ semimonad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    semimonad.left.f $ semimonad.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.left.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.left.f $ semimonad.left.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.right.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.left.f $ semimonad.right.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a semi-monad and a right-composable semi-monad" should "produce a semi-monad" in {
-    (semimonad.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.f & semimonad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.f & semimonad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.f & semimonad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
+    semimonad.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.f & semimonad.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.f & semimonad.right.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.left.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.f & semimonad.left.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of a left-composable semi-monad and a monad" should "produce a semi-monad" in {
-    (semimonad.left.f $ monad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.f $ monad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.left.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.left.f $ monad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.right.g & semimonad.left.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    semimonad.left.f $ monad.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    monad.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.left.f $ monad.left.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    monad.left.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    semimonad.left.f $ monad.right.g: SemiMonad[({type λ[α] = F[G[α]]})#λ]
+    monad.right.g & semimonad.left.f: SemiMonad[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a monad and a right-composable semi-monad" should "produce a semi-monad" in {
-    (semimonad.right.f & monad.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.f & monad.right.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.right.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (semimonad.right.f & monad.left.g).isInstanceOf[SemiMonad[Any]] should equal (true)
-    (monad.left.g $ semimonad.right.f).isInstanceOf[SemiMonad[Any]] should equal (true)
+    semimonad.right.f & monad.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    monad.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.f & monad.right.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    monad.right.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    semimonad.right.f & monad.left.g: SemiMonad[({type λ[α] = G[F[α]]})#λ]
+    monad.left.g $ semimonad.right.f: SemiMonad[({type λ[α] = G[F[α]]})#λ]
   }
 
   "Composition of a left-composable monad and a monad" should "produce a monad" in {
-    (monad.left.f $ monad.g).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.left.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.left.f $ monad.left.g).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.right.g & monad.left.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.left.f $ monad.right.g).isInstanceOf[Monad[Any]] should equal (true)
+    monad.left.f $ monad.g: Monad[({type λ[α] = F[G[α]]})#λ]
+    monad.g & monad.left.f: Monad[({type λ[α] = F[G[α]]})#λ]
+    monad.left.g & monad.left.f: Monad[({type λ[α] = F[G[α]]})#λ]
+    monad.left.f $ monad.left.g: Monad[({type λ[α] = F[G[α]]})#λ]
+    monad.right.g & monad.left.f: Monad[({type λ[α] = F[G[α]]})#λ]
+    monad.left.f $ monad.right.g: Monad[({type λ[α] = F[G[α]]})#λ]
   }
 
   "Composition of a monad and a right-composable monad" should "produce a monad" in {
-    (monad.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.right.f & monad.g).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.right.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.right.f & monad.right.g).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.left.g $ monad.right.f).isInstanceOf[Monad[Any]] should equal (true)
-    (monad.right.f & monad.left.g).isInstanceOf[Monad[Any]] should equal (true)
+    monad.g $ monad.right.f: Monad[({type λ[α] = G[F[α]]})#λ]
+    monad.right.f & monad.g: Monad[({type λ[α] = G[F[α]]})#λ]
+    monad.right.g $ monad.right.f: Monad[({type λ[α] = G[F[α]]})#λ]
+    monad.right.f & monad.right.g: Monad[({type λ[α] = G[F[α]]})#λ]
+    monad.left.g $ monad.right.f: Monad[({type λ[α] = G[F[α]]})#λ]
+    monad.right.f & monad.left.g: Monad[({type λ[α] = G[F[α]]})#λ]
   }
 }
 
