@@ -2,7 +2,6 @@ package scala.workflow
 
 import language.higherKinds
 import concurrent.{ExecutionContext, Future}
-import util.Try
 
 trait Instances extends FunctorInstances
                    with SemiIdiomInstances
@@ -89,9 +88,9 @@ trait MonadInstances {
     def bind[A, B](f: A ⇒ Set[B]) = _ flatMap f
   }
 
-  implicit val try_ = new Monad[Try] {
-    def point[A](a: ⇒ A) = Try(a)
-    def bind[A, B](f: A ⇒ Try[B]) = _ flatMap f
+  implicit val try_ = new Monad[util.Try] {
+    def point[A](a: ⇒ A) = util.Try(a)
+    def bind[A, B](f: A ⇒ util.Try[B]) = _ flatMap f
   }
 
   implicit def future(implicit executor: ExecutionContext) = new Monad[Future] {
