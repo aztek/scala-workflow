@@ -500,8 +500,8 @@ be used to construct a composition.
 
 The same holds for semi-monads.
 
-Check [`instances.scala`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/instances.scala)
-to ensure, which monads are left or right composable and also [composition specs](https://github.com/aztek/scala-workflow/blob/master/core/src/test/scala/scala/workflow/CompositionSpec.scala)
+Check [`instances.scala`](https://github.com/aztek/scala-workflow/blob/master/src/main/scala/scala/workflow/instances.scala)
+to ensure, which monads are left or right composable and also [composition specs](https://github.com/aztek/scala-workflow/blob/master/src/test/scala/scala/workflow/CompositionSpec.scala)
 for exact rules of composition of different workflow classes.
 
 Methods `$` and `&` are called _monad transformer_ elsewhere, although
@@ -777,7 +777,7 @@ val logging = accumulator[List[String]]
 Accumulator monad (called `Writer` monad elsewhere) captures a computation that
 aside from producing the result, accumulates some auxiliary output. In this case
 it's message in a log, represented as plain list of strings. In general case,
-type with defined [`Monoid`](https://github.com/aztek/scala-workflow/blob/master/core/src/main/scala/scala/workflow/auxiliary.scala) instance is expected.
+type with defined [`Monoid`](https://github.com/aztek/scala-workflow/blob/master/src/main/scala/scala/workflow/auxiliary.scala) instance is expected.
 
 Regular functions naturally don't produce any log messages in `accumulator`
 monad sense. To produce log message, a function must return a tuple of result
