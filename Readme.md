@@ -654,7 +654,7 @@ def put(value: Int) = command {
 }
 
 def dup = command {
-  case head :: tail ⇒ Right(head :: head :: tail)
+  case a :: stack ⇒ Right(a :: a :: stack)
   case _ ⇒ Left("Stack underflow while executing `dup`")
 }
 
