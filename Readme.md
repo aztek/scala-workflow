@@ -399,9 +399,11 @@ Here are some of other examples of code rewriting within `Option` context.
   (x$2: Int) ⇒
     x$2 * 2
 )(Some(10)))</pre></td>
-      <td><pre>2 + (for {
-  x ← Some(10)
-} yield x * 2)</pre></td>
+      <td><pre>for {
+  y ← for {
+    x ← Some(10)
+  } yield x * 2
+} yield 2 + y</pre></td>
    </tr>
 </table>
 
