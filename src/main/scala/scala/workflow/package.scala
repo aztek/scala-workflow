@@ -100,6 +100,7 @@ package object workflow extends Instances {
 
     WorkflowContext(tpe, instance)
   }
+
   private def contextFromEnclosure(c: Context) = {
     val workflowContext = for {
       context ← c.openMacros.view
@@ -245,17 +246,19 @@ package object workflow extends Instances {
         (newerscope.leave, value)
     }
 
-    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
-      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
-        val (newscope, newcondition) = rewrite(scope)(condition)
-        val (consscope, newconsequent) = rewrite(newscope)(consequent)
-        val (altscope, newalternative) = rewrite(newscope)(alternative)
-        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
-      case expr ⇒
-        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
-    }
+//    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
+//      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
+//        val (newscope, newcondition) = rewrite(scope)(condition)
+//        val (consscope, newconsequent) = rewrite(newscope)(consequent)
+//        val (altscope, newalternative) = rewrite(newscope)(alternative)
+//        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
+//      case expr ⇒
+//        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
+//    }
 
-    def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
+    def rewriteExpr(scope: Scope): Tree ⇒ (Scope, Tree) = {
+      case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
+
       case Apply(fun, args) ⇒
         val (funscope,   newfun)  = rewrite(scope)(fun)
         val (argsscopes, newargs) = args.map(rewrite(funscope)).unzip
@@ -264,15 +267,16 @@ package object workflow extends Instances {
       case Select(value, method) ⇒
         val (newscope, newvalue) = rewrite(scope)(value)
         extractBinds(newscope, q"$newvalue.$method")
+    }
 
+    def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case block: Block ⇒ rewriteBlock(scope)(block)
 
-      case condition: If ⇒ rewriteIf(scope)(condition)
+//      case condition: If ⇒ rewriteIf(scope)(condition)
 
-      case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
+      case expr @ (_ : Literal | _ : Ident | _ : New | _ : Apply | _ : Select) ⇒ rewriteExpr(scope)(expr)
 
-      case expr ⇒
-        c.abort(expr.pos, "Unsupported expression")
+      case expr ⇒ c.abort(expr.pos, "Unsupported expression")
     }
 
     def extractBinds(scope: Scope, expr: Tree) =
