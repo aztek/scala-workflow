@@ -266,7 +266,7 @@ package object workflow extends Instances {
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 
       case expr ⇒
-        c.abort(expr.pos, "Unsupported expression " + showRaw(expr))
+        c.abort(expr.pos, "Unsupported expression")
     }
 
     def extractBinds(scope: Scope, expr: Tree) =
