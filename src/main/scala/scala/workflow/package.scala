@@ -17,6 +17,10 @@ package object workflow extends Instances {
     code
   }
 
+  /** Untyped macro functions are not allowed to be overloaded. There is a
+    * workaround -- we can defined `context` as a function and an `apply`
+    * method of `context` object.
+    */
   object context {
     def apply(workflow: Any)(code: _): _ = macro contextImpl
     def contextImpl(c: Context)(workflow: c.Expr[Any])(code: c.Tree): c.Tree = {
@@ -41,6 +45,9 @@ package object workflow extends Instances {
     rewrite(c)(code, workflowContext).asInstanceOf[Tree]
   }
 
+  /** Just like with `context`, we imitate function overloading with `apply`
+    * method of `workflow` object.
+    */
   object workflow {
     def apply(workflow: Any)(code: _): _ = macro workflowImpl
     def workflowImpl(c: Context)(workflow: c.Expr[Any])(code: c.Tree): c.Tree = {
@@ -93,7 +100,6 @@ package object workflow extends Instances {
 
     WorkflowContext(tpe, instance)
   }
-
   private def contextFromEnclosure(c: Context) = {
     val workflowContext = for {
       context ← c.openMacros.view
@@ -239,15 +245,15 @@ package object workflow extends Instances {
         (newerscope.leave, value)
     }
 
-//    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
-//      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
-//        val (newscope, newcondition) = rewrite(scope)(condition)
-//        val (consscope, newconsequent) = rewrite(newscope)(consequent)
-//        val (altscope, newalternative) = rewrite(newscope)(alternative)
-//        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
-//      case expr ⇒
-//        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
-//    }
+    def rewriteIf(scope: Scope): If ⇒ (Scope, Tree) = {
+      case If(condition, consequent, alternative) if alternative != Literal(Constant(())) ⇒
+        val (newscope, newcondition) = rewrite(scope)(condition)
+        val (consscope, newconsequent) = rewrite(newscope)(consequent)
+        val (altscope, newalternative) = rewrite(newscope)(alternative)
+        (Scope.merge(consscope, altscope), If(newcondition, newconsequent, newalternative))
+      case expr ⇒
+        c.abort(expr.pos, "`if` expressions with missing alternative are not supported")
+    }
 
     def rewrite(scope: Scope): Tree ⇒ (Scope, Tree) = {
       case Apply(fun, args) ⇒
@@ -261,7 +267,7 @@ package object workflow extends Instances {
 
       case block: Block ⇒ rewriteBlock(scope)(block)
 
-//      case condition: If ⇒ rewriteIf(scope)(condition)
+      case condition: If ⇒ rewriteIf(scope)(condition)
 
       case expr @ (_ : Literal | _ : Ident | _ : New) ⇒ extractBinds(scope, expr)
 
