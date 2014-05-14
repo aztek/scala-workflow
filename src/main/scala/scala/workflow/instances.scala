@@ -205,13 +205,9 @@ trait MonadInstances {
 }
 
 trait SemigroupInstances {
-  val maxSemigroup = new Semigroup[Int] {
-    def append = _ max _
-  }
+  val maxSemigroup = Semigroup[Int](_ max _)
 
-  val minSemigroup = new Semigroup[Int] {
-    def append = _ min _
-  }
+  val minSemigroup = Semigroup[Int](_ min _)
 }
 
 trait MonoidInstances {
