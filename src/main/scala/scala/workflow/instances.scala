@@ -179,7 +179,7 @@ trait MonadInstances {
 
   def state[S] = new Monad[({type λ[α] = S ⇒ (α, S)})#λ] {
     def point[A](a: ⇒ A) = (a, _)
-    def bind[A, B](f: A ⇒ S ⇒ (B, S)) = _ andThen { case (a, s) ⇒ f(a)(s) }
+    def bind[A, B](f: A ⇒ S ⇒ (B, S)) = Function.uncurried(f).tupled.compose
   }
 
   def accumulator[O : Monoid] = new RightComposableMonad[({type λ[α] = (α, O)})#λ] {
