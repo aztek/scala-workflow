@@ -215,33 +215,17 @@ trait SemigroupInstances {
 }
 
 trait MonoidInstances {
-  implicit def listMonoid[A] = new Monoid[List[A]] {
-    val unit = Nil
-    def append = _ ++ _
-  }
+  implicit def listMonoid[A] = Monoid[List[A]](Nil, _ ++ _)
 
-  val conjunctionMonoid = new Monoid[Boolean] {
-    val unit = true
-    def append = _ && _
-  }
+  val conjunctionMonoid = Monoid[Boolean](true, _ && _)
 
-  val disjunctionMonoid = new Monoid[Boolean] {
-    val unit = false
-    def append = _ || _
-  }
+  val disjunctionMonoid = Monoid[Boolean](false, _ || _)
 
-  implicit val additionMonoid = new Monoid[Int] {
-    val unit = 0
-    def append = _ + _
-  }
+  implicit val additionMonoid = Monoid[Int](0, _ + _)
 
-  val multiplicationMonoid = new Monoid[Int] {
-    val unit = 1
-    def append = _ * _
-  }
+  val multiplicationMonoid = Monoid[Int](1, _ * _)
 
-  implicit val string = new Monoid[String] {
-    val unit = ""
-    def append = _ + _
-  }
+  implicit val string = Monoid[String]("", _ + _)
+
+  implicit def functionMonoid[A] = Monoid[Function[A, A]](identity[A], _ compose _)
 }

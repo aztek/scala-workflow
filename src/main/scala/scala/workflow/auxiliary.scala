@@ -10,4 +10,9 @@ trait Monoid[A] extends Semigroup[A] {
   val unit: A
 }
 
-object Monoid extends MonoidInstances
+object Monoid extends MonoidInstances {
+  def apply[A](u: A, ap: (A, A) => A) = new Monoid[A] {
+    val unit = u
+    def append = ap
+  }
+}
