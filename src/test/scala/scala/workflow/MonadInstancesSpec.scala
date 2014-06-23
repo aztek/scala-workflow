@@ -26,14 +26,6 @@ class MonadInstancesSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  "Sets" should "work" in {
-    context[Set] {
-      $(42) should equal (Set(42))
-      $(Set(1, 2, 3) * 2) should equal (Set(2, 4, 6))
-      $(Set(1, 2, 4) * Set(1, 2, 4)) should equal (Set(1, 2, 4, 8, 16))
-    }
-  }
-
   "Tries" should "work" in {
     context[Try] {
       $(42) should equal (Try(42))

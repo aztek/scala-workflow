@@ -83,11 +83,6 @@ trait MonadInstances {
     }
   }
 
-  implicit val set = new Monad[Set] {
-    def point[A](a: ⇒ A) = Set(a)
-    def bind[A, B](f: A ⇒ Set[B]) = _ flatMap f
-  }
-
   implicit val try_ = new Monad[util.Try] {
     def point[A](a: ⇒ A) = util.Try(a)
     def bind[A, B](f: A ⇒ util.Try[B]) = _ flatMap f
