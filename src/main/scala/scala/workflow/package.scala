@@ -292,7 +292,7 @@ package object workflow extends Instances {
           }
         case Failure(e) ⇒
           val binds = scope.materialized.flatten map {
-            case Bind(name, _, value) ⇒ s"   $name = $value"
+            case Bind(name, tpt, value) ⇒ s"   $name: $tpt <- $value"
           }
           val message = s"Type error during rewriting of expression within $workflow context"
           val bindsList = if (binds.isEmpty) "" else s" where${binds mkString ("\n\n", "\n", "\n\n")}"
