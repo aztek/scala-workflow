@@ -201,12 +201,14 @@ package object workflow extends Instances {
           val (newscope, newexpr) = rewrite(scope.enter)(expr)
           val frame = newscope.materialized.last
           if (frame.isEmpty) {
-            val name = signature map { case (_, name, _) ⇒ name } getOrElse TermName("_")
+            val name = signature.fold(TermName("_")) {
+              case (_, name, _) ⇒ name
+            }
             val tpe = typeCheck(newexpr, newscope).get.tpe
             val bind = Bind(name, TypeTree(tpe), newexpr)
-            val cont = (_: Boolean) ⇒ signature map {
-                                        case (mods, _, tpt) ⇒ block(ValDef(mods, name, tpt, newexpr))
-                                      } getOrElse block(q"$newexpr")
+            val cont = (_: Boolean) ⇒ signature.fold(block(q"$newexpr")) {
+              case (mods, _, tpt) ⇒ block(ValDef(mods, name, tpt, newexpr))
+            }
 
             val newerscope = if (signature.isDefined) scope :+ bind else scope
 
@@ -214,7 +216,9 @@ package object workflow extends Instances {
           } else {
             val value = apply(frame)(newexpr)
             val tpe = typeCheck(newexpr, newscope).get.tpe
-            val name = signature map { case (_, term, _) ⇒ term } getOrElse TermName("_")
+            val name = signature.fold(TermName("_")) {
+              case (_, name, _) ⇒ name
+            }
             val bind = Bind(name, TypeTree(tpe), value)
             val cont = (x: Boolean) ⇒ if (x) >>=(bind) compose lambda(bind) // Especially dirty hack!
                                       else   map(bind) compose lambda(bind) // TODO: figure out a better way
